@@ -11,7 +11,7 @@
     { "source": "/api/tickets/:id/correction-request", "destination": "/api/ticket-corrections/request.js" },
     { "source": "/api/ticket-corrections/:id/review", "destination": "/api/ticket-corrections/review.js" },
     { "source": "/api/cron/sla-check", "destination": "/api/cron/sla-check.js" },
-    { "source": "/(.*)", "destination": "/" }
+    { "source": "/(.*)", "destination": "/index.html" }
   ],
   "crons": [
     {
