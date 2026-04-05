@@ -23,6 +23,7 @@ interface TicketModalProps {
 import { CUSTOMERS } from '../constants';
 
 export function TicketModal({ ticket, isOpen, onClose, onSave, routeConfigs }: TicketModalProps) {
+    const safeRouteConfigs = Array.isArray(routeConfigs) ? routeConfigs : [];
     const [formData, setFormData] = useState<Partial<TransportTicket>>({});
 
     useEffect(() => {
@@ -60,10 +61,61 @@ export function TicketModal({ ticket, isOpen, onClose, onSave, routeConfigs }: T
         }
     }, [formData.nightStayDays, durationDays, formData.nightStay]);
 
-    if (!isOpen || !ticket) return null;
+    // Logic: Snapshot Night Stay Price
+    useEffect(() => {
+        if (formData.nightStay) {
+            const location = formData.cityStatus || formData.nightStayLocation || 'OUTER_CITY';
+            // Normalize location
+            const normalizedLoc = (location === 'IN_CITY' || location === 'INNER_CITY') ? 'INNER_CITY' : 'OUTER_CITY';
 
-    const getRouteDetails = (routeName: string, size: string, fe: string) => {
-        const config = routeConfigs.find(rc => rc.routeName === routeName);
+            // Time-Travel Lookup for Night Config
+            // 1. Filter by CargoType=LUU_DEM and Location
+            const candidates = safeRouteConfigs.filter(rc =>
+                rc && rc.cargoType === 'LUU_DEM' &&
+                rc.nightStayLocation === normalizedLoc
+            );
+
+            // 2. Sort by Effective Date DESC
+            candidates.sort((a, b) => (b.effectiveDate || '').localeCompare(a.effectiveDate || ''));
+
+            // 3. Find applicable version
+            const ticketDate = formData.dateStart
+                ? format(new Date(formData.dateStart), 'yyyy-MM-dd')
+                : format(new Date(), 'yyyy-MM-dd');
+
+            const config = candidates.find(rc => (rc.effectiveDate || '') <= ticketDate);
+
+            if (config) {
+                setFormData(prev => ({
+                    ...prev,
+                    nightStaySalary: config.salary.driverSalary,
+                    nightStayLocation: normalizedLoc // Ensure consistency
+                }));
+            }
+        } else {
+            setFormData(prev => ({ ...prev, nightStaySalary: 0 }));
+        }
+    }, [formData.nightStay, formData.cityStatus, formData.nightStayLocation, formData.dateStart]);
+
+
+
+    const getRouteDetails = (routeName: string, size: string, fe: string, dateStart?: string) => {
+        // Filter by Name
+        const candidates = safeRouteConfigs.filter(rc => rc && rc.routeName === routeName);
+        if (candidates.length === 0) return { revenue: 0, driverSalary: 0 };
+
+        // Determine Ticket Date (Default to today)
+        const ticketDate = dateStart
+            ? format(new Date(dateStart), 'yyyy-MM-dd')
+            : format(new Date(), 'yyyy-MM-dd');
+
+        // Sort by Effective Date DESC (Newest first)
+        candidates.sort((a, b) => (b.effectiveDate || '').localeCompare(a.effectiveDate || ''));
+
+        // Find match: first config where effectiveDate <= ticketDate
+        // Fallback to the oldest config if no valid historical config found (safe default)
+        const config = candidates.find(rc => (rc.effectiveDate || '') <= ticketDate) || candidates[candidates.length - 1];
+
         if (!config) return { revenue: 0, driverSalary: 0 };
 
         const { revenue, salary } = config;
@@ -71,17 +123,17 @@ export function TicketModal({ ticket, isOpen, onClose, onSave, routeConfigs }: T
 
         // Revenue Logic
         if (size === '20') {
-            p = fe === 'F' ? revenue.price20F : revenue.price20E;
+            p = fe === 'F' ? (revenue?.price20F || 0) : (revenue?.price20E || 0);
         } else if (size === '40') {
-            p = fe === 'F' ? revenue.price40F : revenue.price40E;
+            p = fe === 'F' ? (revenue?.price40F || 0) : (revenue?.price40E || 0);
         } else {
             // Fallback for others
-            p = fe === 'F' ? revenue.price40F : revenue.price40E;
+            p = fe === 'F' ? (revenue?.price40F || 0) : (revenue?.price40E || 0);
         }
 
         return {
             revenue: p,
-            driverSalary: salary.driverSalary || 0
+            driverSalary: salary?.driverSalary || 0
         };
     };
 
@@ -89,9 +141,14 @@ export function TicketModal({ ticket, isOpen, onClose, onSave, routeConfigs }: T
         setFormData(prev => {
             const updated = { ...prev, [field]: value };
 
-            // Auto-calc price if size or fe changes
-            if (field === 'size' || field === 'fe') {
-                const details = getRouteDetails(updated.route || '', updated.size || '20', updated.fe || 'F');
+            // Auto-calc price if relevant fields change
+            if (field === 'size' || field === 'fe' || field === 'route' || field === 'dateStart') {
+                const details = getRouteDetails(
+                    updated.route || '',
+                    updated.size || '20',
+                    updated.fe || 'F',
+                    updated.dateStart
+                );
                 updated.revenue = details.revenue;
                 updated.driverSalary = details.driverSalary;
             }
@@ -111,13 +168,13 @@ export function TicketModal({ ticket, isOpen, onClose, onSave, routeConfigs }: T
 
     const handleRouteChange = (route: string) => {
         // Find config to get price
-        const details = getRouteDetails(route, formData.size || '20', formData.fe || 'F');
+        const details = getRouteDetails(route, formData.size || '20', formData.fe || 'F', formData.dateStart);
 
         setFormData(prev => ({
             ...prev,
             route: route,
-            revenue: details.revenue, // Auto-fill revenue
-            driverSalary: details.driverSalary // Auto-fill driver salary
+            revenue: details.revenue, // SNAPSHOT: Revenue is copied from config at THIS moment. Future config changes will NOT affect this ticket.
+            driverSalary: details.driverSalary // SNAPSHOT: Salary is copied here.
         }));
     };
 
@@ -128,9 +185,54 @@ export function TicketModal({ ticket, isOpen, onClose, onSave, routeConfigs }: T
     };
 
     // Filter available routes from routeConfigs
-    const availableRoutes = routeConfigs
-        .filter(rc => rc.customer === formData.customerCode)
-        .map(rc => rc.routeName);
+    // Logic: Only show routes that were effective at the time of the ticket
+    // If ticket has no date yet, default to today.
+    const ticketDateVal = formData.dateEnd || formData.dateStart || new Date().toLocaleDateString('en-CA');
+    const ticketTimestamp = new Date(ticketDateVal).getTime();
+
+    // Helper to safely compare dates
+    const isValidRoute = (rc: RouteConfig) => {
+        if (!rc) return false;
+        if (rc.customer !== formData.customerCode) return false;
+
+        // Use Timestamp comparison for robustness
+        const routeEffective = rc.effectiveDate ? new Date(rc.effectiveDate).getTime() : 0;
+
+        // If route effective date is invalid (NaN), assume it's valid (historical) OR hide it? 
+        // Safer to hide if invalid, but let's assume valid if missing (0).
+        // Logic: activeFrom <= ticketDate
+        // Example: Route (14th) <= Ticket (13th) -> False.
+        if (isNaN(routeEffective)) return true; // Fallback
+        if (isNaN(ticketTimestamp)) return true; // Fallback
+
+        return routeEffective <= ticketTimestamp;
+    };
+
+    const availableRoutes = safeRouteConfigs
+        .filter(isValidRoute)
+        .map(rc => rc ? rc.routeName : '');
+
+    // Auto-clear route if it becomes invalid (e.g. date change makes effectiveDate > ticketDate)
+    useEffect(() => {
+        if (formData.route && !availableRoutes.includes(formData.route)) {
+            // Find if it really is invalid or just missing? 
+            // availableRoutes comes from routeConfigs prop which is a snapshot.
+            // If the route name is NOT in availableRoutes, it means it's filtered out.
+            // We should clear it to prevent "ghost" selection.
+
+            // However, verify it's not simply loading... (routeConfigs is passed in prop)
+            if (safeRouteConfigs.length > 0) {
+                setFormData(prev => ({
+                    ...prev,
+                    route: '',
+                    revenue: 0,
+                    driverSalary: 0
+                }));
+            }
+        }
+    }, [ticketDateVal, formData.customerCode, safeRouteConfigs]); // check when date or customer changes
+
+    if (!isOpen || !ticket) return null;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 font-sans">

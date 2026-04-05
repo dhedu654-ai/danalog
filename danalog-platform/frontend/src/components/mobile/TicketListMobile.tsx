@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Clock, CheckCircle, FileText, ChevronRight, Edit, Calendar, PlusCircle, ChevronDown } from 'lucide-react';
 import { TransportTicket } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
+import { TicketDetailMobile } from './TicketDetailMobile';
 import { CreateTicketMobile } from './CreateTicketMobile';
 
 interface TicketListMobileProps {
@@ -85,7 +86,9 @@ export const TicketListMobile: React.FC<TicketListMobileProps> = ({ tickets = []
     };
 
     if (viewingTicket) {
-        if (viewingTicket.status === 'DRAFT') {
+        const isLocked = ['SUBMITTED', 'PENDING', 'APPROVED', 'COMPLETED'].includes(viewingTicket.status);
+        
+        if (!isLocked) {
             return (
                 <div className="fixed inset-0 z-[60] bg-white overflow-y-auto p-4">
                     <button onClick={() => setViewingTicket(null)} className="absolute top-4 right-4 z-[70] p-2 text-slate-400">
@@ -95,7 +98,10 @@ export const TicketListMobile: React.FC<TicketListMobileProps> = ({ tickets = []
                         tickets={tickets}
                         onUpdateTickets={onUpdateTickets}
                         routeConfigs={routeConfigs}
-                        onComplete={() => setViewingTicket(null)}
+                        onComplete={() => {
+                            setViewingTicket(null);
+                            onCreateNew(); // Use as refresh hook
+                        }}
                         ticketToEdit={viewingTicket}
                     />
                 </div>
@@ -103,97 +109,17 @@ export const TicketListMobile: React.FC<TicketListMobileProps> = ({ tickets = []
         }
 
         return (
-
-            <div className="absolute inset-0 z-[60] flex flex-col bg-white animate-slide-up overflow-hidden w-full h-full">
-                <header className="bg-slate-900 text-white p-4 flex justify-between items-center shrink-0">
-                    <div className="flex items-center gap-3">
-                        <button onClick={() => setViewingTicket(null)} className="p-1">
-                            <PlusCircle className="rotate-45" size={24} />
-                        </button>
-                        <h2 className="font-bold text-sm">Chi tiết phiếu vận chuyển</h2>
-                    </div>
-                    <div className={`px-3 py-1 rounded-full text-[10px] font-bold ${getStatusInfo(viewingTicket.status).bg} ${getStatusInfo(viewingTicket.status).color}`}>
-                        {getStatusInfo(viewingTicket.status).label}
-                    </div>
-                </header>
-
-                <div className="flex-1 overflow-y-auto px-3 py-4 custom-scrollbar overscroll-contain bg-white">
-                    <div className="flex justify-between items-start mb-6 gap-2">
-                        <h3 className="text-xl font-bold text-slate-800 break-words flex-1">{viewingTicket.route}</h3>
-                        <div className={`px-3 py-1 rounded-full text-[10px] font-bold ${getStatusInfo(viewingTicket.status).bg} ${getStatusInfo(viewingTicket.status).color} shrink-0`}>
-                            {getStatusInfo(viewingTicket.status).label}
-                        </div>
-                    </div>
-
-                    <div className="space-y-0.5">
-                        <DetailRow label="Ngày bắt đầu" value={formatDate(viewingTicket.dateStart)} />
-                        <DetailRow label="Ngày kết thúc" value={formatDate(viewingTicket.dateEnd || viewingTicket.dateStart)} />
-                        <DetailRow label="Khách hàng" value={viewingTicket.customerCode} />
-                        <DetailRow label="Biển số" value={viewingTicket.licensePlate} />
-                        <DetailRow label="Tuyến đường" value={viewingTicket.route} />
-                        <DetailRow label="Container No." value={`${viewingTicket.containerNo} (${viewingTicket.size}')`} />
-                        <DetailRow label="Số chuyến" value={viewingTicket.trips?.toString() || '1'} />
-                        <DetailRow label="F/E" value={viewingTicket.fe === 'E' ? 'Empty' : 'Full'} />
-                        <DetailRow
-                            label="Lưu đêm"
-                            value={viewingTicket.nightStay
-                                ? `${viewingTicket.nightStayDays} đêm (${viewingTicket.nightStayLocation === 'INNER_CITY' ? 'Trong TP' : 'Ngoài TP'})`
-                                : 'Không'}
-                        />
-
-                        <div className="mt-6">
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Ghi chú</label>
-                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm text-slate-600 italic">
-                                {viewingTicket.notes || 'Không có ghi chú'}
-                            </div>
-                        </div>
-
-                        {viewingTicket.imageUrl && (
-                            <div className="mt-6">
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Ảnh container</label>
-                                <img src={viewingTicket.imageUrl} alt="Container" className="w-full h-auto object-cover rounded-xl border border-slate-200" />
-                            </div>
-                        )}
-
-                        {viewingTicket.onChainStatus === 'VERIFIED' && (
-                            <div className="mt-8 pt-6 border-t border-slate-50">
-                                <label className="text-[10px] font-bold text-blue-400 uppercase tracking-widest block mb-3">Xác minh On-Chain (Blockchain)</label>
-                                <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100">
-                                    <div className="flex items-center gap-2 text-blue-700 mb-2">
-                                        <CheckCircle size={16} />
-                                        <span className="text-xs font-bold">Chứng thực bởi Monad Network</span>
-                                    </div>
-                                    <p className="text-[8px] font-mono text-blue-400 break-all bg-white/50 p-2 rounded">
-                                        TX: {viewingTicket.onChainHash}
-                                    </p>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                <div className="p-4 border-t border-slate-100 shrink-0 space-y-2">
-                    <button
-                        onClick={() => setViewingTicket(null)}
-                        className="w-full bg-slate-800 text-white font-bold py-4 rounded-2xl active:bg-slate-900 transition-all text-sm uppercase tracking-wide"
-                    >
-                        Đóng
-                    </button>
-                </div>
-            </div>
+            <TicketDetailMobile 
+                ticket={viewingTicket} 
+                onBack={() => setViewingTicket(null)} 
+            />
         );
     }
 
     return (
         <div className="space-y-4 pb-10 animate-slide-up">
             <header className="flex justify-between items-center px-1">
-                <h2 className="text-xl font-bold text-slate-800">Danh sách phiếu</h2>
-                <button
-                    onClick={onCreateNew}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-full text-xs font-bold shadow-sm shadow-blue-200 active:scale-95 transition-all"
-                >
-                    <PlusCircle size={16} /> Tạo mới
-                </button>
+                <h2 className="text-xl font-bold text-slate-800">Lịch sử Chuyến Đi</h2>
             </header>
 
             {/* Filter Controls - Exactly like driver-app */}
@@ -226,19 +152,25 @@ export const TicketListMobile: React.FC<TicketListMobileProps> = ({ tickets = []
                             <input type="date" value={dateRange.end} onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))} className="bg-slate-50 rounded-lg px-2 py-1.5 text-[10px] font-bold border-none outline-none w-24 text-center text-slate-600 focus:ring-2 focus:ring-blue-100 transition-all font-mono" />
                         </div>
                     ) : (
-                        <div className="relative ml-auto">
-                            <div className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 transition-colors px-3 py-1.5 rounded-lg border border-slate-100 cursor-pointer">
-                                <span className="text-xs font-bold text-slate-700 whitespace-nowrap">
-                                    {selectedMonth ? `Tháng ${selectedMonth.split('-')[1]}/${selectedMonth.split('-')[0]}` : 'Chọn tháng'}
-                                </span>
-                                <ChevronDown size={14} className="text-slate-400" />
-                            </div>
-                            <input
-                                type="month"
-                                value={selectedMonth}
-                                onChange={(e) => setSelectedMonth(e.target.value)}
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                            />
+                        <div className="flex gap-2 ml-auto">
+                            <select
+                                value={selectedMonth.split('-')[1]}
+                                onChange={(e) => setSelectedMonth(`${selectedMonth.split('-')[0]}-${e.target.value}`)}
+                                className="bg-slate-50 rounded-lg px-3 py-1.5 text-[10px] font-bold border border-slate-100 outline-none text-slate-700"
+                            >
+                                {Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(m => (
+                                    <option key={m} value={m}>Tháng {m}</option>
+                                ))}
+                            </select>
+                            <select
+                                value={selectedMonth.split('-')[0]}
+                                onChange={(e) => setSelectedMonth(`${e.target.value}-${selectedMonth.split('-')[1]}`)}
+                                className="bg-slate-50 rounded-lg px-3 py-1.5 text-[10px] font-bold border border-slate-100 outline-none text-slate-700"
+                            >
+                                {[2023, 2024, 2025, 2026].map(y => (
+                                    <option key={y} value={y.toString()}>{y}</option>
+                                ))}
+                            </select>
                         </div>
                     )}
                 </div>
@@ -287,14 +219,17 @@ export const TicketListMobile: React.FC<TicketListMobileProps> = ({ tickets = []
 
                                 <div className="mt-4 pt-3 border-t border-slate-50 flex justify-between items-center">
                                     <div className="flex gap-2">
-                                        {ticket.status === 'DRAFT' && (
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); /* edit logic */ }}
-                                                className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold"
-                                            >
-                                                <Edit size={14} /> Sửa
-                                            </button>
-                                        )}
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setViewingTicket(ticket); }}
+                                            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${['SUBMITTED', 'PENDING', 'APPROVED', 'COMPLETED'].includes(ticket.status) ? 'bg-slate-50 text-slate-500 active:bg-slate-100' : 'bg-blue-50 text-blue-600 active:bg-blue-100'}`}
+                                        >
+                                            {['SUBMITTED', 'PENDING', 'APPROVED', 'COMPLETED'].includes(ticket.status) ? (
+                                                <>Xem chi tiết</>
+                                            ) : (
+                                                <><Edit size={14} /> Chi tiết / Cập nhật</>
+                                            )}
+                                        </button>
+                                        
                                         {ticket.nightStay && (
                                             <div className="px-2 py-1 bg-orange-50 text-orange-600 rounded-lg text-[10px] font-bold">LƯU ĐÊM</div>
                                         )}
@@ -307,7 +242,7 @@ export const TicketListMobile: React.FC<TicketListMobileProps> = ({ tickets = []
                 ) : (
                     <div className="py-20 flex flex-col items-center justify-center text-slate-300 space-y-3">
                         <FileText size={48} opacity={0.3} />
-                        <p className="text-sm font-medium">Không tìm thấy phiếu nào</p>
+                        <p className="text-sm font-medium">Không tìm thấy chuyến đi nào</p>
                     </div>
                 )}
             </div>

@@ -26,19 +26,24 @@ export const CreateTicketMobile: React.FC<CreateTicketMobileProps> = ({
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Get all unique plates from previous tickets of this user
+    // Get driver's default plate from user profile
+    const userDefaultPlate = user?.licensePlate || '';
+
+    // Get all unique plates from previous tickets of this user, plus the user's profile plate
     const uniquePlates = Array.from(new Set(
-        tickets
-            .filter(t => t.createdBy === user?.username || t.driverName === user?.name)
-            .map(t => t.licensePlate)
-            .filter((p): p is string => !!p) // Filter out empty/null
+        [
+            userDefaultPlate, // Add user's profile plate first
+            ...tickets
+                .filter(t => t.createdBy === user?.username || t.driverName === user?.name)
+                .map(t => t.licensePlate)
+        ].filter((p): p is string => !!p) // Filter out empty/null
     ));
 
-    // Form State
+    // Form State - use user's default plate if creating new ticket
     const [formData, setFormData] = useState({
         dateStart: ticketToEdit?.dateStart || new Date().toISOString().split('T')[0],
         dateEnd: ticketToEdit?.dateEnd || new Date().toISOString().split('T')[0],
-        licensePlate: ticketToEdit?.licensePlate || '',
+        licensePlate: ticketToEdit?.licensePlate || userDefaultPlate,
         customerCode: ticketToEdit?.customerCode || '',
         route: ticketToEdit?.route || '',
         routeId: ticketToEdit?.routeId || '',
@@ -62,15 +67,23 @@ export const CreateTicketMobile: React.FC<CreateTicketMobileProps> = ({
     const [availableRoutes, setAvailableRoutes] = useState<RouteConfig[]>([]);
 
     // Filter routes by selected customer
-    const customers = Array.from(new Set(routeConfigs.map(c => c.customer)));
+    const customers = Array.from(new Set(routeConfigs.map(c => c.customer))).filter(c => !!c);
 
     useEffect(() => {
         if (formData.customerCode) {
-            setAvailableRoutes(routeConfigs.filter(r => r.customer === formData.customerCode));
+            const customerRoutes = routeConfigs.filter(r => r.customer === formData.customerCode);
+            // Filter by effective date
+            const validRoutes = customerRoutes.filter(r => {
+                if (!r.effectiveDate) return true;
+                // Strict compare using date objects to avoid string issues
+                // Assuming formats are YYYY-MM-DD
+                return new Date(r.effectiveDate) <= new Date(formData.dateStart);
+            });
+            setAvailableRoutes(validRoutes);
         } else {
             setAvailableRoutes([]);
         }
-    }, [formData.customerCode, routeConfigs]);
+    }, [formData.customerCode, formData.dateStart, routeConfigs]);
 
     useEffect(() => {
         if (containerOption === 'suaxe') setFormData(prev => ({ ...prev, containerNo: 'Sửa xe', containerImage: null, containerImagePreview: '' }));
@@ -131,7 +144,7 @@ export const CreateTicketMobile: React.FC<CreateTicketMobileProps> = ({
                 return;
             }
 
-            if (containerOption === 'input' && !formData.containerImage) {
+            if (containerOption === 'input' && !formData.containerImage && !formData.containerImagePreview) {
                 alert('Vui lòng chụp ảnh/tải ảnh Container');
                 return;
             }
@@ -180,6 +193,7 @@ export const CreateTicketMobile: React.FC<CreateTicketMobileProps> = ({
                 ...ticketToEdit,
                 ...formData,
                 status,
+                createdBy: ticketToEdit.createdBy || user?.username,
                 revenue: calculatedRevenue || ticketToEdit.revenue,
                 driverSalary: calculatedSalary || ticketToEdit.driverSalary,
                 imageUrl: formData.containerImagePreview || ticketToEdit.imageUrl,
@@ -245,6 +259,22 @@ export const CreateTicketMobile: React.FC<CreateTicketMobileProps> = ({
         }
     };
 
+
+    // Helper to format license plate
+    const formatLicensePlate = (value: string) => {
+        const clean = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+
+        if (clean.length > 3) {
+            let formatted = clean.slice(0, 3) + '-' + clean.slice(3);
+            if (clean.length > 6) {
+                // 43C-123.45 format
+                formatted = clean.slice(0, 3) + '-' + clean.slice(3, 6) + '.' + clean.slice(6, 8);
+            }
+            return formatted;
+        }
+        return clean;
+    };
+
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300 pb-20">
             <header className="mb-2">
@@ -287,7 +317,7 @@ export const CreateTicketMobile: React.FC<CreateTicketMobileProps> = ({
                             type="text"
                             placeholder="59A-123.45"
                             value={formData.licensePlate}
-                            onChange={e => setFormData({ ...formData, licensePlate: e.target.value.toUpperCase() })}
+                            onChange={e => setFormData({ ...formData, licensePlate: formatLicensePlate(e.target.value) })}
                             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold tracking-wider focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                         />
                         {uniquePlates.length > 0 && !formData.licensePlate && !ticketToEdit && (
@@ -368,11 +398,19 @@ export const CreateTicketMobile: React.FC<CreateTicketMobileProps> = ({
                         <div>
                             <input
                                 type="text"
-                                placeholder="ABCD 123456"
+                                placeholder="ABCD123456"
                                 value={formData.containerNo}
                                 onChange={e => setFormData({ ...formData, containerNo: e.target.value.toUpperCase() })}
-                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono font-bold tracking-widest focus:ring-2 focus:ring-orange-500 outline-none transition-all"
+                                className={`w-full px-4 py-3 bg-slate-50 border rounded-xl text-sm font-mono font-bold tracking-widest outline-none transition-all ${formData.containerNo.includes(' ')
+                                    ? 'border-red-500 text-red-500 focus:ring-2 focus:ring-red-500 bg-red-50'
+                                    : 'border-slate-200 focus:ring-2 focus:ring-orange-500'
+                                    }`}
                             />
+                            {formData.containerNo.includes(' ') && (
+                                <p className="mt-1 text-[10px] font-bold text-red-500 animate-pulse">
+                                    * Số Container không được chứa khoảng trắng
+                                </p>
+                            )}
                         </div>
                     )}
 

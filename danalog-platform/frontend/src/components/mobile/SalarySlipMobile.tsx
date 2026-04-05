@@ -7,9 +7,10 @@ interface SalarySlipMobileProps {
     tickets: TransportTicket[];
     notifications?: any[];
     routeConfigs: RouteConfig[];
+    publishedSalaries: any[];
 }
 
-export const SalarySlipMobile: React.FC<SalarySlipMobileProps> = ({ tickets, notifications, routeConfigs }) => {
+export const SalarySlipMobile: React.FC<SalarySlipMobileProps> = ({ tickets, notifications, routeConfigs, publishedSalaries }) => {
     const { user } = useAuth();
     console.log('Notifications count:', notifications?.length || 0);
     const [viewMode, setViewMode] = useState<'list' | 'detail'>('list');
@@ -21,11 +22,27 @@ export const SalarySlipMobile: React.FC<SalarySlipMobileProps> = ({ tickets, not
         return amount.toLocaleString('vi-VN') + ' đ';
     };
 
-    // Filter tickets for the current user
+    // 1. Get ONLY published months for this driver
+    const driverPublishedMonths = useMemo(() => {
+        if (!user) return [];
+        return (publishedSalaries || [])
+            .filter(ps => ps.driverUsername === user.username)
+            .map(ps => `${ps.year}-${ps.month.toString().padStart(2, '0')}`);
+    }, [publishedSalaries, user]);
+
+    // 2. Filter tickets for the current user and only for published months
     const userTickets = useMemo(() => {
         if (!user) return [];
-        return tickets.filter(t => t.createdBy === user.username || t.driverName === user.name);
-    }, [tickets, user]);
+        return tickets.filter(t => {
+            const isOwner = t.createdBy === user.username || t.driverName === user.name;
+            if (!isOwner) return false;
+
+            const d = t.dateEnd || t.dateStart;
+            if (!d) return false;
+            const monthStr = d.slice(0, 7);
+            return driverPublishedMonths.includes(monthStr);
+        });
+    }, [tickets, user, driverPublishedMonths]);
 
     // Calculate totals for a month
     const calculateMonthSalary = (monthStr: string) => {
@@ -94,19 +111,11 @@ export const SalarySlipMobile: React.FC<SalarySlipMobileProps> = ({ tickets, not
     };
 
     const availableMonths = useMemo(() => {
-        const months = new Set<string>();
-        userTickets.forEach(t => {
-            if (t.status === 'APPROVED') {
-                const d = t.dateEnd || t.dateStart;
-                if (d) months.add(d.slice(0, 7));
-            }
-        });
-
-        let list = Array.from(months).sort().reverse();
+        let list = [...driverPublishedMonths].sort().reverse();
         if (filterYear) list = list.filter(m => m.startsWith(filterYear));
         if (filterMonth) list = list.filter(m => m.endsWith(`-${filterMonth.padStart(2, '0')}`));
         return list;
-    }, [userTickets, filterYear, filterMonth]);
+    }, [driverPublishedMonths, filterYear, filterMonth]);
 
     if (viewMode === 'list') {
         return (
@@ -115,36 +124,50 @@ export const SalarySlipMobile: React.FC<SalarySlipMobileProps> = ({ tickets, not
                     <h2 className="text-2xl font-bold text-slate-800">Bảng Lương</h2>
                     <p className="text-slate-500 text-sm">Phiếu lương đã được công ty gửi</p>
 
-                    <div className="mt-6 bg-slate-50 rounded-2xl p-1.5 flex items-center justify-between relative border border-slate-100 shadow-sm active:scale-[0.99] transition-all cursor-pointer">
-                        <div className="flex items-center gap-3 px-3">
-                            <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-blue-600 border border-blue-50">
-                                <Calendar size={20} />
+                    <div className="mt-6 flex gap-4">
+                        <div className="flex-1 bg-white rounded-2xl p-1.5 flex items-center justify-between border border-slate-100 shadow-sm transition-all">
+                            <div className="flex items-center gap-3 px-3 w-full">
+                                <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                                    <Calendar size={16} />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Tháng</p>
+                                    <select
+                                        value={filterMonth}
+                                        onChange={(e) => setFilterMonth(e.target.value)}
+                                        className="w-full bg-transparent text-sm font-bold text-slate-800 outline-none cursor-pointer appearance-none"
+                                    >
+                                        <option value="">Tất cả</option>
+                                        {Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(m => (
+                                            <option key={m} value={m}>Tháng {m}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <ChevronDown size={14} className="text-slate-400 pointer-events-none" />
                             </div>
-                            <div>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Thời gian</p>
-                                <p className="text-sm font-bold text-slate-800">
-                                    {filterYear && filterMonth ? `Tháng ${filterMonth}/${filterYear}` : 'Chọn tháng lương'}
-                                </p>
-                            </div>
-                        </div>
-                        <div className="pr-3 text-slate-400">
-                            <ChevronDown size={20} />
                         </div>
 
-                        <input
-                            type="month"
-                            value={filterMonth && filterYear ? `${filterYear}-${filterMonth.padStart(2, '0')}` : ''}
-                            onChange={(e) => {
-                                const val = e.target.value;
-                                if (val) {
-                                    setFilterYear(val.split('-')[0]);
-                                    setFilterMonth(val.split('-')[1]);
-                                } else {
-                                    setFilterMonth('');
-                                }
-                            }}
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
-                        />
+                        <div className="flex-1 bg-white rounded-2xl p-1.5 flex items-center justify-between border border-slate-100 shadow-sm transition-all">
+                            <div className="flex items-center gap-3 px-3 w-full">
+                                <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400">
+                                    <Calendar size={16} />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Năm</p>
+                                    <select
+                                        value={filterYear}
+                                        onChange={(e) => setFilterYear(e.target.value)}
+                                        className="w-full bg-transparent text-sm font-bold text-slate-800 outline-none cursor-pointer appearance-none"
+                                    >
+                                        <option value="">Tất cả</option>
+                                        {[2023, 2024, 2025, 2026].map(y => (
+                                            <option key={y} value={y.toString()}>{y}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <ChevronDown size={14} className="text-slate-400 pointer-events-none" />
+                            </div>
+                        </div>
                     </div>
                 </header>
 

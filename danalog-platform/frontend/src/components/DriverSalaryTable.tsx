@@ -1,18 +1,17 @@
 import { useState, useMemo } from 'react';
 import { TransportTicket, RouteConfig } from '../types';
 import XLSX from 'xlsx-js-style';
-import { Calendar, Bell, ChevronRight, Search, FileSpreadsheet, User } from 'lucide-react';
+import { format } from 'date-fns';
+import { Calendar, Bell, ChevronRight, FileSpreadsheet, User } from 'lucide-react';
 
 interface DriverSalaryTableProps {
     tickets: TransportTicket[];
     routeConfigs: RouteConfig[];
-    onNotifySalary?: (driverUsername: string) => void;
+    publishedSalaries: any[];
+    users: any[];
+    onNotifySalary?: (driverUsername: string, month: number, year: number) => void;
 }
 
-const DRIVER_EMAILS: Record<string, string> = {
-    'Nguyễn Đức Tiên': 'nganchau.207@gmail.com',
-    // Add other mappings here if needed
-};
 
 interface SalaryItem {
     id: string; // Composite key
@@ -27,6 +26,7 @@ interface SalaryItem {
 
 interface DriversalarySheet {
     driverName: string;
+    driverUsername: string;
     items: SalaryItem[];
     totalQuantity: number;
     totalSalary: number;
@@ -34,10 +34,9 @@ interface DriversalarySheet {
     year: number;
     trips: number;
 }
-export function DriverSalaryTable({ tickets, routeConfigs, onNotifySalary }: DriverSalaryTableProps) {
+export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, users, onNotifySalary }: DriverSalaryTableProps) {
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-    const [searchTerm, setSearchTerm] = useState('');
     const [selectedDriver, setSelectedDriver] = useState('');
     const [expandedDrivers, setExpandedDrivers] = useState<string[]>([]);
     const [isExporting, setIsExporting] = useState(false);
@@ -47,10 +46,16 @@ export function DriverSalaryTable({ tickets, routeConfigs, onNotifySalary }: Dri
         return tickets.filter(t => {
             if (t.status !== 'APPROVED') return false;
             const date = new Date(t.dateEnd);
-            // Filter by Driver if selected (or enforced by Role)
+            // Filter by Driver if selected
             if (selectedDriver && t.driverName !== selectedDriver) return false;
 
-            return date.getMonth() + 1 === selectedMonth && date.getFullYear() === selectedYear;
+            // Month Filter (0 = All)
+            if (selectedMonth !== 0 && date.getMonth() + 1 !== selectedMonth) return false;
+
+            // Year Filter (0 = All)
+            if (selectedYear !== 0 && date.getFullYear() !== selectedYear) return false;
+
+            return true;
         });
     }, [tickets, selectedMonth, selectedYear, selectedDriver]);
 
@@ -98,6 +103,31 @@ export function DriverSalaryTable({ tickets, routeConfigs, onNotifySalary }: Dri
 
                 const key = `${t.route}-${t.driverSalary}-${cargoName}`;
 
+                let historicalPrice = t.driverSalary;
+
+                // FIX: Apply Time-Travel Lookup for MAIN TRIP as well.
+                // This ensures if the ticket snapshot is wrong (updated by mistake), we recover the correct historical price 
+                // from the Route Config history (if it exists).
+
+                // 1. Filter by Route Name
+                const mainCandidates = routeConfigs.filter(rc => rc.routeName === t.route);
+
+                if (mainCandidates.length > 0) {
+                    // 2. Sort by Effective Date DESC
+                    mainCandidates.sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate));
+
+                    // 3. Find correct version based on date
+                    const mainRefDate = t.dateEnd || t.dateStart || new Date().toISOString();
+                    const mainCompletionDate = format(new Date(mainRefDate), 'yyyy-MM-dd');
+
+                    // 4. Find version active at that time
+                    const historicalConfig = mainCandidates.find(rc => rc.effectiveDate <= mainCompletionDate) || mainCandidates[mainCandidates.length - 1];
+
+                    if (historicalConfig) {
+                        historicalPrice = historicalConfig.salary.driverSalary;
+                    }
+                }
+
                 if (!itemMap[key]) {
                     itemMap[key] = {
                         id: key,
@@ -105,7 +135,7 @@ export function DriverSalaryTable({ tickets, routeConfigs, onNotifySalary }: Dri
                         content: t.route,
                         unit,
                         quantity: 0,
-                        unitPrice: t.driverSalary || 0,
+                        unitPrice: historicalPrice || 0,
                         total: 0,
                         note: ""
                     };
@@ -118,30 +148,54 @@ export function DriverSalaryTable({ tickets, routeConfigs, onNotifySalary }: Dri
                 if (t.nightStay && t.nightStayDays && t.nightStayDays > 0) {
                     // Check if this is NOT already a manual "Lưu đêm" route
                     if (!routeLower.includes("lưu đêm")) {
-                        // FIX: Prioritize the location saved on the ticket. 
-                        // Only look up RouteConfig if ticket doesn't specify location.
-                        let location = t.nightStayLocation;
+                        // FIX: Prioritize the salary saved on the ticket (Snapshot)
+                        // If not found, fallback to dynamic lookup (Legacy behavior)
+                        let nightPrice = t.nightStaySalary;
 
-                        if (!location) {
-                            const routeConfig = routeConfigs.find(rc => rc.routeName === t.route);
-                            location = routeConfig?.nightStayLocation || 'OUTER_CITY';
+                        let location = t.nightStayLocation;
+                        let nightConfig: RouteConfig | undefined;
+
+                        if (!nightPrice) {
+                            if (!location) {
+                                const routeConfig = routeConfigs.find(rc => rc.routeName === t.route);
+                                location = routeConfig?.nightStayLocation || 'OUTER_CITY';
+                            }
+
+                            // Find the appropriate Night Config (Dynamic Look up - Legacy)
+                            // Time-Travel Lookup for Night Config
+                            // 1. Filter by CargoType=LUU_DEM and Location
+                            const candidates = routeConfigs.filter(rc =>
+                                rc.cargoType === 'LUU_DEM' &&
+                                ((rc.nightStayLocation === 'INNER_CITY' && (location === 'INNER_CITY' || location === 'IN_CITY')) ||
+                                    (rc.nightStayLocation === 'OUTER_CITY' && (location === 'OUTER_CITY' || location === 'OUT_CITY')))
+                            );
+
+                            // 2. Sort by Effective Date DESC
+                            candidates.sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate));
+
+                            // 3. Find correct version based on completion date
+                            // FIX 1: Fallback to dateStart if dateEnd is missing to prevent using "today" (2026) for old tickets (2024)
+                            const refDate = t.dateEnd || t.dateStart || new Date().toISOString();
+                            const completionDate = format(new Date(refDate), 'yyyy-MM-dd');
+
+                            // FIX 2: Restore fallback to oldest config if no match found. 
+                            // This handles cases where user overwrote config but prevents "0" (which user hates).
+                            // If user has proper versions (2023, 2025), FIX 1 ensures we pick 2023.
+                            nightConfig = candidates.find(rc => rc.effectiveDate <= completionDate) || candidates[candidates.length - 1];
+
+                            if (nightConfig) {
+                                nightPrice = nightConfig.salary.driverSalary;
+                            }
                         }
 
-                        // Find the appropriate Night Config
-                        const nightConfigId = (location === 'INNER_CITY' || location === 'IN_CITY') ? 'RT-NIGHT-02' : 'RT-NIGHT-01';
-                        // Handle potential casing mismatch or legacy values
-
-                        const nightConfig = routeConfigs.find(rc => rc.id === nightConfigId);
-
-                        if (nightConfig) {
-                            const nightPrice = nightConfig.salary.driverSalary;
+                        if (nightPrice) {
                             const nightKey = `NIGHT-${location}-${nightPrice}`;
 
                             if (!itemMap[nightKey]) {
                                 itemMap[nightKey] = {
                                     id: nightKey,
                                     cargoName: 'Lưu đêm',
-                                    content: nightConfig.routeName,
+                                    content: nightConfig?.routeName || 'Lưu đêm (Snapshot)',
                                     unit: 'đêm',
                                     quantity: 0,
                                     unitPrice: nightPrice,
@@ -164,8 +218,13 @@ export function DriverSalaryTable({ tickets, routeConfigs, onNotifySalary }: Dri
             const totalSalary = items.reduce((sum, item) => sum + item.total, 0);
             const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
 
+            // Find the unique username for this driver name
+            const driverInfo = users.find(u => u.name === driverName);
+            const driverUsername = driverInfo?.username || driverTickets[0]?.createdBy || driverName;
+
             sheets.push({
                 driverName,
+                driverUsername,
                 items,
                 totalQuantity,
                 totalSalary,
@@ -175,13 +234,12 @@ export function DriverSalaryTable({ tickets, routeConfigs, onNotifySalary }: Dri
             });
         });
 
-        // Filter by Search Term and Selected Driver
+        // Filter by Selected Driver
         return sheets.filter(s => {
-            const matchesSearch = s.driverName.toLowerCase().includes(searchTerm.toLowerCase());
             const matchesDriver = selectedDriver ? s.driverName === selectedDriver : true;
-            return matchesSearch && matchesDriver;
+            return matchesDriver;
         });
-    }, [filteredTickets, searchTerm, selectedDriver, selectedMonth, selectedYear]);
+    }, [filteredTickets, selectedDriver, selectedMonth, selectedYear]);
 
     // Toggle Expand
     const toggleExpand = (driverName: string) => {
@@ -202,81 +260,198 @@ export function DriverSalaryTable({ tickets, routeConfigs, onNotifySalary }: Dri
         const uniquePlates = Array.from(new Set(driverPlates));
         const plate = uniquePlates.length > 0 ? uniquePlates.join(', ') : '';
 
-        // Header Information
-        const centerStyle = { alignment: { horizontal: 'center', vertical: 'center' }, font: { bold: true } };
+        // Styles
+        const fontName = 'Times New Roman';
 
-        // Row 1: Title (Merged A1:H1) - Centered
-        const row1 = [
-            { v: 'BẢNG TỔNG HỢP THANH TOÁN LƯƠNG', t: 's', s: centerStyle },
-            '', '', '', '', '', '', ''
-        ];
-
-        // Row 2: Period (Merged A2:H2) - Centered
-        const row2 = [
-            { v: `Kỳ thanh toán: ${sheet.month}/${sheet.year}`, t: 's', s: centerStyle },
-            '', '', '', '', '', '', ''
-        ];
-
-        // Row 3: Name (Merged A3:D3) & Plate (Merged E3:H3)
-        const row3 = [
-            { v: `Họ và tên: ${sheet.driverName}`, t: 's', s: centerStyle },
-            '', '', '',
-            { v: `Biển kiểm soát: ${plate}`, t: 's', s: centerStyle },
-            '', '', ''
-        ];
-
-        const headerRows = [row1, row2, row3, ['', '', '', '', '', '', ''], ['', '', '', '', '', '', '']];
-
-        // Table Data
-        const tableData = sheet.items.map((item, index) => ({
-            'STT': index + 1,
-            'Tên hàng': item.cargoName,
-            'Nội dung': item.content,
-            'ĐVT': item.unit,
-            'Số lượng': item.quantity,
-            'Đơn giá tiền lương': item.unitPrice,
-            'Tổng lương': item.total,
-            'Ghi chú': item.note
-        }));
-
-        // Total Row
-        const totalRow = {
-            'STT': '', 'Tên hàng': 'Cộng', 'Nội dung': '', 'ĐVT': '',
-            'Số lượng': sheet.totalQuantity,
-            'Đơn giá tiền lương': '',
-            'Tổng lương': sheet.totalSalary,
-            'Ghi chú': ''
+        // Borders - Solid Black Thin
+        const borderStyle = {
+            top: { style: 'thin', color: { rgb: "000000" } },
+            bottom: { style: 'thin', color: { rgb: "000000" } },
+            left: { style: 'thin', color: { rgb: "000000" } },
+            right: { style: 'thin', color: { rgb: "000000" } }
         };
 
+        const titleStyle = {
+            font: { name: fontName, sz: 14, bold: true },
+            alignment: { horizontal: 'center', vertical: 'center' }
+        };
+        const subTitleStyle = {
+            font: { name: fontName, sz: 11, bold: true },
+            alignment: { horizontal: 'center', vertical: 'center' }
+        };
+
+        const infoStyle = {
+            font: { name: fontName, sz: 11, bold: true },
+            alignment: { horizontal: 'center', vertical: 'center' }
+        };
+
+        // Table Header
+        const headerStyle = {
+            font: { name: fontName, sz: 11, bold: true },
+            alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+            border: borderStyle,
+            fill: { fgColor: { rgb: "FFFFFF" } }
+        };
+
+        // Data Cells
+        const cellCenter = {
+            font: { name: fontName, sz: 11 },
+            alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+            border: borderStyle
+        };
+
+        const cellLeft = {
+            font: { name: fontName, sz: 11 },
+            alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+            border: borderStyle
+        };
+
+        const cellRight = {
+            font: { name: fontName, sz: 11 },
+            alignment: { horizontal: 'right', vertical: 'center' },
+            border: borderStyle
+        };
+
+        // Total Row
+        const totalLabelStyle = {
+            font: { name: fontName, sz: 11, bold: true },
+            alignment: { horizontal: 'center', vertical: 'center' },
+            border: borderStyle
+        };
+
+        const totalValueStyle = {
+            font: { name: fontName, sz: 11, bold: true },
+            alignment: { horizontal: 'right', vertical: 'center' },
+            border: borderStyle
+        };
+
+        // Construct Rows
+
+        // Row 1: Title
+        const row1 = [
+            { v: 'BẢNG TỔNG HỢP THANH TOÁN LƯƠNG', t: 's', s: titleStyle },
+            { v: '', t: 's', s: titleStyle }, { v: '', t: 's', s: titleStyle }, { v: '', t: 's', s: titleStyle },
+            { v: '', t: 's', s: titleStyle }, { v: '', t: 's', s: titleStyle }, { v: '', t: 's', s: titleStyle }, { v: '', t: 's', s: titleStyle }
+        ];
+
+        // Row 2: Period
+        const row2 = [
+            { v: `Kỳ thanh toán: ${sheet.month === 0 ? 'Tất cả' : sheet.month}/${sheet.year === 0 ? 'Tất cả' : sheet.year}`, t: 's', s: subTitleStyle },
+            { v: '', t: 's', s: subTitleStyle }, { v: '', t: 's', s: subTitleStyle }, { v: '', t: 's', s: subTitleStyle },
+            { v: '', t: 's', s: subTitleStyle }, { v: '', t: 's', s: subTitleStyle }, { v: '', t: 's', s: subTitleStyle }, { v: '', t: 's', s: subTitleStyle }
+        ];
+
+        // Row 3: Info
+        const row3 = [
+            { v: `Họ và tên: ${sheet.driverName}`, t: 's', s: infoStyle },
+            { v: '', t: 's', s: infoStyle }, { v: '', t: 's', s: infoStyle }, { v: '', t: 's', s: infoStyle },
+            { v: `Biển kiểm soát: ${plate}`, t: 's', s: infoStyle },
+            { v: '', t: 's', s: infoStyle }, { v: '', t: 's', s: infoStyle }, { v: '', t: 's', s: infoStyle }
+        ];
+
+        // Row 4: Empty (Gap)
+        const row4 = ['', '', '', '', '', '', '', ''];
+
+        // Row 5: Headers
+        const row5 = [
+            { v: 'STT', t: 's', s: headerStyle },
+            { v: 'Tên hàng', t: 's', s: headerStyle },
+            { v: 'Nội dung', t: 's', s: headerStyle },
+            { v: 'ĐVT', t: 's', s: headerStyle },
+            { v: 'Số lượng', t: 's', s: headerStyle },
+            { v: 'Đơn giá tiền lương', t: 's', s: headerStyle },
+            { v: 'Tổng lương', t: 's', s: headerStyle },
+            { v: 'Ghi chú', t: 's', s: headerStyle }
+        ];
+
+        // Data Rows
+        const dataRows = sheet.items.map((item, index) => [
+            { v: index + 1, t: 'n', s: cellCenter },
+            { v: item.cargoName, t: 's', s: cellLeft },
+            { v: item.content, t: 's', s: cellLeft },
+            { v: item.unit, t: 's', s: cellCenter },
+            { v: item.quantity, t: 'n', s: cellCenter },
+            { v: item.unitPrice, t: 'n', s: cellRight },
+            { v: item.total, t: 'n', s: cellRight },
+            { v: item.note || '', t: 's', s: cellLeft }
+        ]);
+
+        // Total Row
+        // User request: "Cộng" spans from A to D (Merges A, B, C, D)
+
+        // Actually, let's just calculate logic dynamically or trust the push order.
+        // We add headers (1 row) + 3 title rows + 1 empty row = 5 rows (0-4).
+        // Table Header is row 5.
+        // Data starts row 6.
+        // Total row is last.
+
+        const totalRow = [
+            { v: 'Cộng', t: 's', s: totalLabelStyle }, // Merged A-D
+            { v: '', t: 's', s: cellCenter },
+            { v: '', t: 's', s: cellCenter },
+            { v: '', t: 's', s: cellCenter },
+            { v: sheet.totalQuantity, t: 'n', s: { ...cellCenter, font: { name: fontName, sz: 11, bold: true } } },
+            { v: '', t: 's', s: cellCenter }, // Don Gia
+            { v: sheet.totalSalary, t: 'n', s: totalValueStyle },
+            { v: '', t: 's', s: cellCenter } // Ghi Chu
+        ];
+
         const ws = XLSX.utils.json_to_sheet([]);
+        const allRows = [row1, row2, row3, row4, row5, ...dataRows, totalRow];
 
-        // Add Headers
-        XLSX.utils.sheet_add_aoa(ws, headerRows, { origin: 'A1' });
+        XLSX.utils.sheet_add_aoa(ws, allRows, { origin: 'A1' });
 
-        // Add Data starting at A6
-        XLSX.utils.sheet_add_json(ws, tableData, { origin: 'A6' });
+        // Calculate Total Row Index for Merging
+        // rows 0,1,2,3,4 are headers/gap.
+        // row 5 is table header.
+        // dataRows.length items.
+        // Total row is at index: 5 + 1 (header) + dataRows.length? 
+        // Wait, 'row5' is the 5th element in `allRows` array (index 4)?
+        // No: row1, row2, row3, row4, row5 are 5 items. Indices 0,1,2,3,4.
+        // dataRows is list of items.
+        // Total row is last.
+        // Total Row Index = 4 + dataRows.length + 1 = 5 + dataRows.length.
+        const lastRowIdx = 5 + dataRows.length;
 
-        // Add Total Row
-        XLSX.utils.sheet_add_json(ws, [totalRow], { origin: -1, skipHeader: true });
-
-        // Cell Merges
+        // Merges
         ws['!merges'] = [
-            { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } }, // Title: A1-H1
-            { s: { r: 1, c: 0 }, e: { r: 1, c: 7 } }, // Period: A2-H2
-            { s: { r: 2, c: 0 }, e: { r: 2, c: 3 } }, // Name: A3-D3
-            { s: { r: 2, c: 4 }, e: { r: 2, c: 7 } }  // Plate: E3-H3
+            { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } }, // Row 1 Title
+            { s: { r: 1, c: 0 }, e: { r: 1, c: 7 } }, // Row 2 Period
+            { s: { r: 2, c: 0 }, e: { r: 2, c: 3 } }, // Row 3 Name (A-D)
+            { s: { r: 2, c: 4 }, e: { r: 2, c: 7 } },  // Row 3 Plate (E-H)
+
+            // Total Row Merge: A to D (Cols 0-3)
+            { s: { r: lastRowIdx, c: 0 }, e: { r: lastRowIdx, c: 3 } }
         ];
 
         // Column Widths
-        ws['!cols'] = [{ wch: 5 }, { wch: 15 }, { wch: 40 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 20 }];
+        ws['!cols'] = [
+            { wch: 5 },  // STT
+            { wch: 15 }, // Ten Hang
+            { wch: 40 }, // Noi Dung
+            { wch: 8 },  // DVT
+            { wch: 8 },  // So Luong
+            { wch: 15 }, // Don Gia
+            { wch: 15 }, // Tong Luong
+            { wch: 20 }  // Ghi Chu
+        ];
 
-        // Safe Sheet Name
         const sheetName = sheet.driverName.replace(/[\\/?*[\]]/g, '').slice(0, 30);
         XLSX.utils.book_append_sheet(wb, ws, sheetName);
     };
 
-    // Bulk Export Logic
     const handleBulkExport = () => {
+        // Require BOTH month AND year to be selected
+        if (selectedMonth === 0 || selectedYear === 0) {
+            alert('Vui lòng chọn cả Tháng và Năm để xuất bảng kê lương.');
+            return;
+        }
+
+        if (salarySheets.length === 0) {
+            alert('Không có dữ liệu để xuất!');
+            return;
+        }
+
         setIsExporting(true);
         try {
             const wb = XLSX.utils.book_new();
@@ -299,58 +474,17 @@ export function DriverSalaryTable({ tickets, routeConfigs, onNotifySalary }: Dri
         }
     };
 
-    const handleNotifyDriver = (driverName: string) => {
-        // 1. Export individual sheet
-        const sheet = salarySheets.find(s => s.driverName === driverName);
-        if (sheet) {
-            try {
-                const wb = XLSX.utils.book_new();
-                addDriverSheet(wb, sheet);
-
-                // Format filename: Luong_Thang_12_Nguyen_Duc_Tien.xlsx
-                // Simple sanitize for filename
-                const safeName = driverName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '_');
-                const fileName = `Luong_Thang_${selectedMonth}_${safeName}.xlsx`;
-
-                XLSX.writeFile(wb, fileName);
-            } catch (err) {
-                console.error("Export error:", err);
-                alert("Lỗi xuất file excel cho lái xe.");
-                return;
-            }
-        }
-
-        // 2. Simulate Email Notification
-        const email = DRIVER_EMAILS[driverName] || 'chưa có email';
-        alert(`Đã gửi thông báo lương (Email & SMS) cho lái xe: ${driverName}\nEmail: ${email}`);
-
-        // Optional: Call original handler if needed
-        const driverTicket = tickets.find(t => t.driverName === driverName);
-        if (driverTicket?.createdBy && onNotifySalary) {
-            // onNotifySalary(driverTicket.createdBy); 
-        }
-    };
 
     return (
         <div className="space-y-6 font-sans">
-            <div className="flex justify-between items-end">
-                <div>
-                    <h2 className="text-2xl font-bold text-slate-800">Bảng Kê Lương Lái Xe</h2>
-                    <p className="text-slate-500 mt-1">Tổng hợp và đối soát lương theo tháng.</p>
-                </div>
-                <button
-                    onClick={handleBulkExport}
-                    disabled={isExporting || salarySheets.length === 0}
-                    className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 text-white font-bold rounded-xl shadow-md hover:bg-emerald-700 transition-all hover:shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    {isExporting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <FileSpreadsheet size={20} />}
-                    Xuất Bảng Kê (Excel)
-                </button>
+            <div>
+                <h2 className="text-2xl font-bold text-slate-800">Bảng Kê Lương Lái Xe</h2>
+                <p className="text-slate-500 mt-1">Tổng hợp và đối soát lương theo tháng.</p>
             </div>
 
-            {/* Filters */}
-            <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-wrap gap-4 items-center">
-                <div className="flex items-center gap-2 text-slate-400 mr-4 border-r border-slate-200 pr-4">
+            {/* Filters + Export Button */}
+            <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex gap-4 items-center">
+                <div className="flex items-center gap-2 text-slate-400 border-r border-slate-200 pr-4 shrink-0">
                     <Calendar size={20} />
                     <span className="font-bold text-xs uppercase">Kỳ thanh toán</span>
                 </div>
@@ -360,6 +494,7 @@ export function DriverSalaryTable({ tickets, routeConfigs, onNotifySalary }: Dri
                     onChange={e => setSelectedMonth(Number(e.target.value))}
                     className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none font-bold text-slate-700 cursor-pointer"
                 >
+                    <option value={0}>Tất cả tháng</option>
                     {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
                         <option key={m} value={m}>Tháng {m}</option>
                     ))}
@@ -367,19 +502,21 @@ export function DriverSalaryTable({ tickets, routeConfigs, onNotifySalary }: Dri
 
                 <select
                     value={selectedYear}
-                    onChange={e => setSelectedYear(Number(e.target.value))}
-                    className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none font-bold text-slate-700 cursor-pointer"
+                    onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                    className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 outline-none cursor-pointer focus:ring-2 focus:ring-blue-500"
                 >
-                    <option value={2023}>2023</option>
-                    <option value={2024}>2024</option>
-                    <option value={2025}>2025</option>
+                    <option value={0}>Tất cả năm</option>
+                    {[...Array(5)].map((_, i) => {
+                        const year = new Date().getFullYear() - 2 + i;
+                        return <option key={year} value={year}>{year}</option>;
+                    })}
                 </select>
 
                 <div className="relative">
                     <select
                         value={selectedDriver}
                         onChange={e => setSelectedDriver(e.target.value)}
-                        className="pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none font-bold text-slate-700 cursor-pointer appearance-none min-w-[150px]"
+                        className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none font-bold text-slate-700 cursor-pointer appearance-none"
                     >
                         <option value="">Tất cả lái xe</option>
                         {uniqueDrivers.map(d => (
@@ -389,16 +526,14 @@ export function DriverSalaryTable({ tickets, routeConfigs, onNotifySalary }: Dri
                     <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                 </div>
 
-                <div className="ml-auto relative">
-                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                        type="text"
-                        placeholder="Tìm tên lái xe..."
-                        className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none w-64 transition-all"
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                    />
-                </div>
+                <button
+                    onClick={handleBulkExport}
+                    disabled={isExporting || salarySheets.length === 0}
+                    className="ml-auto flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white font-bold rounded-lg shadow-sm hover:bg-emerald-700 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                >
+                    {isExporting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <FileSpreadsheet size={18} />}
+                    Xuất Excel
+                </button>
             </div>
 
             {/* Content */}
@@ -406,7 +541,7 @@ export function DriverSalaryTable({ tickets, routeConfigs, onNotifySalary }: Dri
                 {salarySheets.length === 0 ? (
                     <div className="p-12 text-center text-slate-400 flex flex-col items-center">
                         <Calendar size={48} className="mb-4 opacity-20" />
-                        <p>Không có dữ liệu lương cho tháng {selectedMonth}/{selectedYear}</p>
+                        <p>Không có dữ liệu lương phù hợp</p>
                     </div>
                 ) : (
                     <div className="divide-y divide-slate-100">
@@ -433,16 +568,28 @@ export function DriverSalaryTable({ tickets, routeConfigs, onNotifySalary }: Dri
                                                 {sheet.totalSalary.toLocaleString()} <span className="text-sm font-medium text-slate-400">đ</span>
                                             </span>
                                         </div>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleNotifyDriver(sheet.driverName);
-                                            }}
-                                            className="p-2 text-slate-400 hover:text-blue-600 rounded-full"
-                                            title="Gửi thông báo lương"
-                                        >
-                                            <Bell size={20} />
-                                        </button>
+                                        {(() => {
+                                            const isPublished = publishedSalaries.some(ps =>
+                                                ps.driverUsername === sheet.driverUsername &&
+                                                ps.month === selectedMonth &&
+                                                ps.year === selectedYear
+                                            );
+                                            return (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (onNotifySalary) {
+                                                            onNotifySalary(sheet.driverUsername, selectedMonth, selectedYear);
+                                                        }
+                                                    }}
+                                                    className={`p-2 rounded-full transition-colors ${isPublished ? 'text-blue-600 bg-blue-50' : 'text-slate-400 hover:text-blue-600 hover:bg-slate-100'
+                                                        }`}
+                                                    title={isPublished ? "Đã công bố" : "Gửi thông báo lương"}
+                                                >
+                                                    <Bell size={20} fill={isPublished ? "currentColor" : "none"} />
+                                                </button>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
 

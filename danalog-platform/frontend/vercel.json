@@ -1,8 +1,22 @@
 {
-    "rewrites": [
-        {
-            "source": "/(.*)",
-            "destination": "/index.html"
-        }
-    ]
+  "version": 2,
+  "rewrites": [
+    { "source": "/api/orders", "destination": "/api/orders/index.js" },
+    { "source": "/api/dispatch/assign", "destination": "/api/dispatch/assign.js" },
+    { "source": "/api/dispatch/driver-response", "destination": "/api/dispatch/driver-response.js" },
+    { "source": "/api/dispatch/suggest", "destination": "/api/dispatch/suggest.js" },
+    { "source": "/api/dispatch/auto-assign", "destination": "/api/dispatch/auto-assign.js" },
+    { "source": "/api/dashboard/stats", "destination": "/api/dashboard/stats.js" },
+    { "source": "/api/published-salaries", "destination": "/api/published-salaries/index.js" },
+    { "source": "/api/tickets/:id/correction-request", "destination": "/api/ticket-corrections/request.js" },
+    { "source": "/api/ticket-corrections/:id/review", "destination": "/api/ticket-corrections/review.js" },
+    { "source": "/api/cron/sla-check", "destination": "/api/cron/sla-check.js" },
+    { "source": "/(.*)", "destination": "/" }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/sla-check",
+      "schedule": "*/1 * * * *"
+    }
+  ]
 }

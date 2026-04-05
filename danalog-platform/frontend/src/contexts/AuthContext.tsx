@@ -1,12 +1,19 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
 // Define User Types
-export type UserRole = 'ADMIN' | 'CS' | 'DRIVER';
+export type UserRole = 'ADMIN' | 'CS' | 'CS_LEAD' | 'DISPATCHER' | 'DV_LEAD' | 'ACCOUNTANT' | 'DRIVER';
 
 export interface User {
     username: string;
     role: UserRole;
     name: string;
+    licensePlate?: string;
+    status?: 'ACTIVE' | 'INACTIVE';
+    password?: string; // Optional, used for updates
+    joinedAt?: string;
+    email?: string;
+    phone?: string;
+    vehicleCapacity?: string;
 }
 
 interface AuthContextType {
@@ -51,42 +58,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }, []);
 
     const login = async (username: string, password: string, remember: boolean): Promise<boolean> => {
-        // MOCK AUTHENTICATION
-        // In a real app, this would be an API call
-        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate delay
+        setIsLoading(true);
+        try {
+            // In development, the proxy or full URL might be needed. 
+            // Assuming the React app is served by the same server or proxied.
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
 
-        let authenticatedUser: User | null = null;
-
-        if (username === 'admin' && password === 'admin123') {
-            authenticatedUser = { username: 'admin', role: 'ADMIN', name: 'Administrator' };
-        } else if (username === 'cs_user' && password === 'password123') {
-            authenticatedUser = { username: 'cs_user', role: 'CS', name: 'CS Staff' };
-        } else {
-            // SUPPORT DRIVER PATTERN: e.g. tiennd
-            const driverPatterns = ['tiennd', 'anhnv', 'thanhnv', 'driver_user'];
-            if (driverPatterns.includes(username) && password === 'driver123') {
-                const nameMap: Record<string, string> = {
-                    'tiennd': 'Nguyễn Đức Tiên',
-                    'anhnv': 'Nguyễn Văn Anh',
-                    'thanhnv': 'Nguyễn Văn Thành',
-                    'driver_user': 'Người lái xe'
-                };
-                authenticatedUser = {
-                    username: username,
-                    role: 'DRIVER',
-                    name: nameMap[username] || 'Nguyễn Văn A'
-                };
+            if (response.ok) {
+                const authenticatedUser: User = await response.json();
+                setUser(authenticatedUser);
+                if (remember) {
+                    localStorage.setItem('danalog_user', JSON.stringify(authenticatedUser));
+                } else {
+                    sessionStorage.setItem('danalog_user', JSON.stringify(authenticatedUser));
+                }
+                return true;
             }
-        }
-
-        if (authenticatedUser) {
-            setUser(authenticatedUser);
-            if (remember) {
-                localStorage.setItem('danalog_user', JSON.stringify(authenticatedUser));
-            } else {
-                sessionStorage.setItem('danalog_user', JSON.stringify(authenticatedUser));
-            }
-            return true;
+        } catch (err) {
+            console.error("Login API error:", err);
+        } finally {
+            setIsLoading(false);
         }
 
         return false;

@@ -1,16 +1,21 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { TransportTicket } from '../types';
-import { History, Edit3, CheckCircle, User, Filter, ArrowRight, ArrowLeft, Image as ImageIcon } from 'lucide-react';
+import { History, Edit3, CheckCircle, User, Filter, ArrowRight, ArrowLeft, Image as ImageIcon, XCircle } from 'lucide-react';
 import { isWithinInterval, parseISO, isSameMonth, format } from 'date-fns';
 import { TicketModal } from './TicketModal';
 import { HistoryModal } from './HistoryModal';
+import { TicketCorrectionModal } from './TicketCorrectionModal';
+import { MessageSquare } from 'lucide-react';
 
 import { RouteConfig } from '../types';
 
-export function TicketList({ tickets, onUpdateTickets, onUpdateTicket, routeConfigs, currentUser }: { tickets: TransportTicket[], onUpdateTickets: (t: TransportTicket[]) => void, onUpdateTicket?: (t: TransportTicket) => void, routeConfigs: RouteConfig[], currentUser?: any }) {
+export function TicketList({ tickets, onUpdateTickets, onUpdateTicket, routeConfigs, currentUser, focusedTicketId, onClearFocus }: { tickets: TransportTicket[], onUpdateTickets: (t: TransportTicket[]) => void, onUpdateTicket?: (t: TransportTicket) => void, routeConfigs: RouteConfig[], currentUser?: any, focusedTicketId?: string | null, onClearFocus?: () => void }) {
     const [editingTicket, setEditingTicket] = useState<TransportTicket | null>(null);
     const [viewingHistoryTicket, setViewingHistoryTicket] = useState<TransportTicket | null>(null);
+    const [correctionTicket, setCorrectionTicket] = useState<TransportTicket | null>(null);
 
+    const isCS = currentUser?.role === 'CS' || currentUser?.role === 'CS_LEAD' || currentUser?.role === 'ADMIN';
+    const isAccountant = currentUser?.role === 'ACCOUNTANT';
     // Filter State
     const [filters, setFilters] = useState({
         fromDate: '',
@@ -22,7 +27,32 @@ export function TicketList({ tickets, onUpdateTickets, onUpdateTicket, routeConf
 
     const handleFilterChange = (key: string, value: string) => {
         setFilters(prev => ({ ...prev, [key]: value }));
+        setCurrentPage(1); // Reset to page 1 when filter changes
     };
+
+    // Deep linking focus
+    useEffect(() => {
+        if (focusedTicketId && tickets.length > 0) {
+            if (focusedTicketId.startsWith('TK-')) {
+                const targetTicket = tickets.find(t => t.id === focusedTicketId);
+                if (targetTicket) {
+                    setTimeout(() => {
+                        setEditingTicket(targetTicket);
+                        if (onClearFocus) onClearFocus();
+                    }, 50);
+                }
+            } else if (focusedTicketId.startsWith('ORD-')) {
+                // For CS check, maybe filter by ORD
+                const orderTickets = tickets.filter(t => t.orderId === focusedTicketId);
+                if (orderTickets.length > 0) {
+                    setTimeout(() => {
+                        setEditingTicket(orderTickets[0]);
+                        if (onClearFocus) onClearFocus();
+                    }, 50);
+                }
+            }
+        }
+    }, [focusedTicketId, tickets, onClearFocus]);
 
     const uniqueDrivers = useMemo(() => {
         const drivers = new Set(tickets.map(t => t.driverName).filter(Boolean));
@@ -31,6 +61,11 @@ export function TicketList({ tickets, onUpdateTickets, onUpdateTicket, routeConf
 
     const filteredTickets = useMemo(() => {
         return tickets.filter(ticket => {
+            // CS chỉ thấy phiếu khi lái xe đã bấm "Gửi CS duyệt"
+            // Phiếu phải có submittedToCS === true HOẶC status đã là PENDING/APPROVED
+            const isSubmittedToCS = ticket.submittedToCS === true || ticket.status === 'PENDING' || ticket.status === 'APPROVED';
+            if (!isSubmittedToCS) return false;
+
             // Date Range
             if (filters.fromDate && filters.toDate) {
                 const start = parseISO(filters.fromDate);
@@ -48,7 +83,8 @@ export function TicketList({ tickets, onUpdateTickets, onUpdateTicket, routeConf
             if (filters.status && filters.status !== 'Tất cả') {
                 const statusMap: Record<string, string> = {
                     'Chờ duyệt': 'PENDING',
-                    'Đã duyệt': 'APPROVED'
+                    'Đã duyệt': 'APPROVED',
+                    'Nháp': 'DRAFT'
                 };
                 if (ticket.status !== statusMap[filters.status]) return false;
             }
@@ -77,7 +113,7 @@ export function TicketList({ tickets, onUpdateTickets, onUpdateTicket, routeConf
 
         const initialApprovedLog = {
             status: 'Đã duyệt',
-            timestamp: format(new Date(), 'HH:mm dd/MM/yy'),
+            timestamp: format(new Date(), 'HH:mm dd/MM/yyyy'),
             user: currentUser?.name || currentUser?.username || 'CS',
             action: 'Phê duyệt phiếu'
         };
@@ -96,6 +132,33 @@ export function TicketList({ tickets, onUpdateTickets, onUpdateTicket, routeConf
         }
     };
 
+    const handleReturnTicket = (id: string) => {
+        const reason = prompt("Lý do trả phiếu về cho CS:");
+        if (!reason) return;
+        
+        const ticket = tickets.find(t => t.id === id);
+        if (!ticket) return;
+
+        const log = {
+            status: 'Kế toán trả về',
+            timestamp: format(new Date(), 'HH:mm dd/MM/yyyy'),
+            user: currentUser?.name || currentUser?.username || 'Kế toán',
+            action: `Trả phiếu: ${reason}`
+        };
+
+        const revertedTicket = {
+            ...ticket,
+            status: 'REJECTED' as any,
+            statusHistory: [log, ...(ticket.statusHistory || [])]
+        };
+
+        if (onUpdateTicket) {
+            onUpdateTicket(revertedTicket);
+        } else {
+            onUpdateTickets(tickets.map(t => t.id === id ? revertedTicket : t));
+        }
+    };
+
     const handleEdit = (ticket: TransportTicket) => {
         setEditingTicket(ticket);
     };
@@ -103,7 +166,7 @@ export function TicketList({ tickets, onUpdateTickets, onUpdateTicket, routeConf
     const handleSaveTicket = (updatedTicket: TransportTicket) => {
         const editLog = {
             status: 'Đã chỉnh sửa',
-            timestamp: format(new Date(), 'HH:mm dd/MM/yy'),
+            timestamp: format(new Date(), 'HH:mm dd/MM/yyyy'),
             user: currentUser?.name || currentUser?.username || 'CS',
             action: 'Cập nhật thông tin phiếu'
         };
@@ -179,7 +242,10 @@ export function TicketList({ tickets, onUpdateTickets, onUpdateTicket, routeConf
                         <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Từ ngày</label>
                         <div className="relative">
                             <input
-                                type="date"
+                                type={filters.fromDate ? "date" : "text"}
+                                placeholder="dd/MM/yyyy"
+                                onFocus={(e) => (e.target.type = "date")}
+                                onBlur={(e) => { if (!filters.fromDate) e.target.type = "text"; }}
                                 value={filters.fromDate}
                                 onChange={e => handleFilterChange('fromDate', e.target.value)}
                                 className="w-full pl-4 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all hover:bg-slate-100 block"
@@ -192,7 +258,10 @@ export function TicketList({ tickets, onUpdateTickets, onUpdateTicket, routeConf
                         <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Đến ngày</label>
                         <div className="relative">
                             <input
-                                type="date"
+                                type={filters.toDate ? "date" : "text"}
+                                placeholder="dd/MM/yyyy"
+                                onFocus={(e) => (e.target.type = "date")}
+                                onBlur={(e) => { if (!filters.toDate) e.target.type = "text"; }}
                                 value={filters.toDate}
                                 onChange={e => handleFilterChange('toDate', e.target.value)}
                                 className="w-full pl-4 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all hover:bg-slate-100 block"
@@ -232,9 +301,9 @@ export function TicketList({ tickets, onUpdateTickets, onUpdateTicket, routeConf
                                     <td className="px-6 py-4 text-center text-slate-400 font-medium">{(currentPage - 1) * PAGE_SIZE + index + 1}</td>
                                     <td className="px-6 py-4">
                                         <div className="flex flex-col">
-                                            <span className="font-medium text-slate-700">{ticket.dateStart ? format(new Date(ticket.dateStart), 'dd/MM/yy') : '-'}</span>
+                                            <span className="font-medium text-slate-700">{ticket.dateStart ? format(new Date(ticket.dateStart), 'dd/MM/yyyy') : '-'}</span>
                                             {ticket.dateEnd !== ticket.dateStart && (
-                                                <span className="text-xs text-slate-400">→ {format(new Date(ticket.dateEnd), 'dd/MM')}</span>
+                                                <span className="text-xs text-slate-400">→ {format(new Date(ticket.dateEnd), 'dd/MM/yyyy')}</span>
                                             )}
                                         </div>
                                     </td>
@@ -281,6 +350,11 @@ export function TicketList({ tickets, onUpdateTickets, onUpdateTicket, routeConf
                                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                                                 Đã duyệt
                                             </span>
+                                        ) : ticket.status === 'DRAFT' ? (
+                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                                                Nháp
+                                            </span>
                                         ) : (
                                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-600 border border-amber-200">
                                                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
@@ -300,7 +374,27 @@ export function TicketList({ tickets, onUpdateTickets, onUpdateTicket, routeConf
                                                 <History size={18} />
                                             </button>
 
-                                            {ticket.status !== 'APPROVED' && (
+                                            {ticket.status === 'APPROVED' && (isCS || isAccountant) && (
+                                                <button
+                                                    onClick={() => setCorrectionTicket(ticket)}
+                                                    className="p-2 text-slate-400 hover:text-purple-600 hover:bg-purple-100 rounded-full transition-all"
+                                                    title="Yêu cầu sửa đổi"
+                                                >
+                                                    <MessageSquare size={18} />
+                                                </button>
+                                            )}
+
+                                            {ticket.status === 'APPROVED' && isAccountant && (
+                                                <button
+                                                    onClick={() => handleReturnTicket(ticket.id)}
+                                                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-100 rounded-full transition-all"
+                                                    title="Kế toán trả phiếu về CS"
+                                                >
+                                                    <XCircle size={18} />
+                                                </button>
+                                            )}
+
+                                            {ticket.status !== 'APPROVED' && isCS && (
                                                 <>
                                                     <button
                                                         onClick={() => handleEdit(ticket)}
@@ -309,13 +403,15 @@ export function TicketList({ tickets, onUpdateTickets, onUpdateTicket, routeConf
                                                     >
                                                         <Edit3 size={18} />
                                                     </button>
-                                                    <button
-                                                        onClick={() => handleApprove(ticket.id)}
-                                                        className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-100 rounded-full transition-all"
-                                                        title="Phê duyệt"
-                                                    >
-                                                        <CheckCircle size={18} />
-                                                    </button>
+                                                    {ticket.status === 'PENDING' && (
+                                                        <button
+                                                            onClick={() => handleApprove(ticket.id)}
+                                                            className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-100 rounded-full transition-all"
+                                                            title="Phê duyệt"
+                                                        >
+                                                            <CheckCircle size={18} />
+                                                        </button>
+                                                    )}
                                                 </>
                                             )}
                                         </div>
@@ -363,6 +459,17 @@ export function TicketList({ tickets, onUpdateTickets, onUpdateTicket, routeConf
                 isOpen={!!viewingHistoryTicket}
                 ticket={viewingHistoryTicket}
                 onClose={() => setViewingHistoryTicket(null)}
+            />
+
+            <TicketCorrectionModal
+                isOpen={!!correctionTicket}
+                ticket={correctionTicket}
+                currentUser={currentUser}
+                onClose={() => setCorrectionTicket(null)}
+                onSuccess={() => {
+                    // Could refresh tickets here if we wanted to show status, 
+                    // but for now just showing alert is enough
+                }}
             />
         </div>
     );

@@ -1,15 +1,16 @@
 import { useState, useMemo } from 'react';
 import { TransportTicket } from '../types';
 import { Download, Filter, User } from 'lucide-react';
-import { format, parseISO, isSameMonth, isWithinInterval } from 'date-fns';
-import * as XLSX from 'xlsx';
+import { format, parseISO, isWithinInterval } from 'date-fns';
+import XLSX from 'xlsx-js-style';
 
 export function CustomerRevenueTable({ tickets }: { tickets: TransportTicket[] }) {
     const [filters, setFilters] = useState({
         customer: '',
+        month: '',
+        year: new Date().getFullYear().toString(),
         fromDate: '',
-        toDate: '',
-        month: ''
+        toDate: ''
     });
 
     const uniqueCustomers = useMemo(() => {
@@ -36,11 +37,21 @@ export function CustomerRevenueTable({ tickets }: { tickets: TransportTicket[] }
                 if (!isWithinInterval(ticketDate, { start, end })) return false;
             }
 
-            // Month Filter
-            if (filters.month) {
-                const filterDate = parseISO(filters.month + '-01');
-                const ticketDate = parseISO(ticket.dateEnd);
-                if (!isSameMonth(filterDate, ticketDate)) return false;
+            // Month & Year Filter
+            // Case 1: Both Month and Year selected -> Exact Month/Year match
+            if (filters.month && filters.year) {
+                const date = parseISO(ticket.dateEnd);
+                if ((date.getMonth() + 1).toString() !== filters.month || date.getFullYear().toString() !== filters.year) return false;
+            }
+            // Case 2: Only Year selected (Month is empty/"All") -> Match Year only
+            else if (!filters.month && filters.year) {
+                const date = parseISO(ticket.dateEnd);
+                if (date.getFullYear().toString() !== filters.year) return false;
+            }
+            // Case 3: Only Month selected (Year is empty/"All") -> Match Month across all years (Valid use case?)
+            else if (filters.month && !filters.year) {
+                const date = parseISO(ticket.dateEnd);
+                if ((date.getMonth() + 1).toString() !== filters.month) return false;
             }
 
             return true;
@@ -65,121 +76,264 @@ export function CustomerRevenueTable({ tickets }: { tickets: TransportTicket[] }
     };
 
     const handleExport = () => {
-        // Validation removed to allow export of whatever is filtered
+        // Validate at least one filter is active
+        const hasCustomerFilter = filters.customer && filters.customer !== 'Tất cả';
+        const hasMonthFilter = !!filters.month;
+        const hasYearFilter = !!filters.year;
+        const hasDateRangeFilter = filters.fromDate && filters.toDate;
+
+        if (!hasCustomerFilter && !hasMonthFilter && !hasYearFilter && !hasDateRangeFilter) {
+            alert('Vui lòng chọn ít nhất 1 bộ lọc (Khách hàng, Tháng, Năm hoặc Khoảng thời gian) trước khi xuất báo cáo.');
+            return;
+        }
+
         if (filteredTickets.length === 0) {
             alert("Không có dữ liệu để xuất!");
             return;
         }
 
-        if (filters.customer && filters.customer !== 'Tất cả') {
-            exportCustomerSheet(filters.customer, filteredTickets);
-        } else {
-            // Bulk Export
-            uniqueCustomers.forEach(customer => {
-                const customerTickets = filteredTickets.filter(t => t.customerCode === customer);
-                if (customerTickets.length > 0) {
-                    exportCustomerSheet(customer, customerTickets);
-                }
-            });
-            alert("Đã bắt đầu tải xuống các file báo cáo.");
-        }
-    };
-
-    const exportCustomerSheet = (customerName: string, data: TransportTicket[]) => {
-        // Headers
-        const header1 = [
-            "STT", "Khách hàng", "Ngày Vận Chuyển", "Số Bill Nhập", "Số cont:", "BKS:", "Số lượng", "", "",
-            "Tuyến đường Vận chuyển", "Đơn giá (VND/chuyến)", "Cước VC",
-            "Nâng Full tại Cảng Đà Nẵng (mức 1)", "Hạ rỗng tại Đà Nẵng", "Phí lấy hàng ở sân bay",
-            "Thành Tiền", "Lưu đêm", "Ghi chú"
-        ];
-        const header2 = [
-            "", "", "", "", "", "", "20", "40", "40R0",
-            "", "", "",
-            "", "", "",
-            "", "", ""
-        ];
-
-        // Data
-        const rows = data.map((t, idx) => {
-            const unitPrice = t.revenue || 0;
-            const size20 = t.size === '20' ? 1 : '';
-            const size40 = t.size === '40' ? 1 : '';
-            const size40R0 = t.size === '40R0' ? 1 : '';
-
-            return [
-                idx + 1,
-                t.customerCode,
-                format(new Date(t.dateStart), 'dd/MM/yy'),
-                "", // Bill No
-                t.containerNo,
-                t.licensePlate || "",
-                size20,
-                size40,
-                size40R0,
-                t.route,
-                unitPrice,
-                t.revenue,
-                "", // Nâng Full
-                "", // Hạ Rỗng
-                "", // Phí lấy hàng
-                t.revenue,
-                t.nightStayDays ? t.nightStayDays : (t.nightStay ? 1 : ''),
-                t.notes || ""
-            ];
+        // Group by Customer
+        const ticketsByCustomer: Record<string, TransportTicket[]> = {};
+        filteredTickets.forEach(t => {
+            const c = t.customerCode || 'Unknown';
+            if (!ticketsByCustomer[c]) ticketsByCustomer[c] = [];
+            ticketsByCustomer[c].push(t);
         });
 
-        // Totals
-        const totalTrips20 = data.reduce((sum, t) => sum + (t.size === '20' ? 1 : 0), 0);
-        const totalTrips40 = data.reduce((sum, t) => sum + (t.size === '40' ? 1 : 0), 0);
-        const totalTrips40R0 = data.reduce((sum, t) => sum + (t.size === '40R0' ? 1 : 0), 0);
-        const totalRevenue = data.reduce((sum, t) => sum + (t.revenue || 0), 0);
-        const totalNightStay = data.reduce((sum, t) => sum + (t.nightStayDays || (t.nightStay ? 1 : 0)), 0);
-
-        const totalRow = [
-            "TỔNG CỘNG", "", "", "", "", "", totalTrips20, totalTrips40, totalTrips40R0,
-            "", "", totalRevenue,
-            0, 0, 0,
-            totalRevenue, totalNightStay, ""
-        ];
-
-        const wsData = [header1, header2, ...rows, totalRow];
-        const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-        // Merges
-        ws['!merges'] = [
-            { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } }, // STT
-            { s: { r: 0, c: 1 }, e: { r: 1, c: 1 } }, // Khách hàng
-            { s: { r: 0, c: 2 }, e: { r: 1, c: 2 } }, // Ngày
-            { s: { r: 0, c: 3 }, e: { r: 1, c: 3 } }, // Bill
-            { s: { r: 0, c: 4 }, e: { r: 1, c: 4 } }, // Cont
-            { s: { r: 0, c: 5 }, e: { r: 1, c: 5 } }, // BKS
-            { s: { r: 0, c: 6 }, e: { r: 0, c: 8 } }, // Số lượng (3 cols)
-            { s: { r: 0, c: 9 }, e: { r: 1, c: 9 } }, // Tuyến đường
-            { s: { r: 0, c: 10 }, e: { r: 1, c: 10 } }, // Đơn giá
-            { s: { r: 0, c: 11 }, e: { r: 1, c: 11 } }, // Cước VC
-            { s: { r: 0, c: 12 }, e: { r: 1, c: 12 } }, // Nâng Full
-            { s: { r: 0, c: 13 }, e: { r: 1, c: 13 } }, // Hạ Rỗng
-            { s: { r: 0, c: 14 }, e: { r: 1, c: 14 } }, // Phí lấy hàng
-            { s: { r: 0, c: 15 }, e: { r: 1, c: 15 } }, // Thành Tiền
-            { s: { r: 0, c: 16 }, e: { r: 1, c: 16 } }, // Lưu đêm
-            { s: { r: 0, c: 17 }, e: { r: 1, c: 17 } }, // Ghi chú
-            { s: { r: rows.length + 2, c: 0 }, e: { r: rows.length + 2, c: 5 } } // TỔNG CỘNG
-        ];
-
-        // Col Widths
-        ws['!cols'] = [
-            { wch: 5 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 15 }, { wch: 12 },
-            { wch: 4 }, { wch: 4 }, { wch: 4 }, // Sizes
-            { wch: 25 }, { wch: 12 }, { wch: 12 },
-            { wch: 12 }, { wch: 12 }, { wch: 15 },
-            { wch: 15 }, { wch: 8 }, { wch: 20 }
-        ];
-
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
-        XLSX.writeFile(wb, `BangKe_KH_${customerName}_${format(new Date(), 'ddMMyy')}.xlsx`);
+
+        // Styles
+        const borderStyle = {
+            top: { style: 'thin' },
+            bottom: { style: 'thin' },
+            left: { style: 'thin' },
+            right: { style: 'thin' }
+        };
+        const titleStyle = {
+            font: { bold: true, sz: 14, name: 'Calibri' },
+            alignment: { horizontal: 'center', vertical: 'center' }
+        };
+        const subTitleStyle = {
+            font: { bold: true, sz: 11, name: 'Calibri' },
+            alignment: { horizontal: 'center', vertical: 'center' }
+        };
+        const headerStyle = {
+            font: { bold: true, name: 'Calibri', sz: 10 },
+            border: borderStyle,
+            alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+            // fill: { fgColor: { rgb: "E0E0E0" } } // Optional background
+        };
+        const cellStyle = {
+            font: { name: 'Calibri', sz: 11 },
+            border: borderStyle,
+            alignment: { vertical: 'center' }
+        };
+        const moneyFormat = '#,##0';
+
+        Object.keys(ticketsByCustomer).forEach(customerName => {
+            const customerTickets = ticketsByCustomer[customerName];
+
+            // Time Label Logic
+            let timeLabel = '';
+            const uniqueMonths = Array.from(new Set(customerTickets.map(t => {
+                if (!t.dateStart && !t.dateEnd) return null;
+                const d = new Date(t.dateStart || t.dateEnd);
+                return `${d.getMonth() + 1}/${d.getFullYear()}`;
+            }).filter(Boolean)));
+
+            if (uniqueMonths.length === 1 && uniqueMonths[0]) {
+                const [m, y] = uniqueMonths[0].split('/');
+                timeLabel = `Tháng ${m}/${y}`;
+            } else if (filters.month && filters.year) {
+                timeLabel = `Tháng ${filters.month}/${filters.year}`;
+            } else if (filters.year) {
+                timeLabel = `Năm ${filters.year}`;
+            } else {
+                timeLabel = "Tổng hợp";
+            }
+
+            // Headers
+            // Row 3 (Index 2)
+            const header1 = [
+                "STT", "Ngày Vận Chuyển", "Số Bill Nhập", "Số cont:", "BKS:", "Số lượng", "", "",
+                "Tuyến đường Vận chuyển", "Đơn giá (VND/chuyến)", "Cước VC",
+                "Nâng Full tại Cảng Đà Nẵng (mức 1)", "Hạ rỗng tại Đà Nẵng", "Phí lấy hàng ở sân bay",
+                "Thành Tiền", "Lưu đêm", "Ghi chú"
+            ];
+            // Row 4 (Index 3)
+            const header2 = [
+                "", "", "", "", "", "20", "40", "40R0",
+                "", "", "",
+                "", "", "",
+                "", "", ""
+            ];
+
+            // Data
+            const rows = customerTickets.map((t, idx) => {
+                const unitPrice = t.revenue || 0;
+                const revenue = t.revenue || 0;
+                const liftOn = t.liftOnFee || 0;
+                const liftOff = t.liftOffFee || 0;
+                const airport = t.airportFee || 0;
+                const totalAmt = revenue + liftOn + liftOff + airport;
+
+                const sizeStr = String(t.size);
+                const is20 = sizeStr === '20';
+                const is40 = sizeStr === '40';
+                const is40R = sizeStr === '40R0' || sizeStr === '40R';
+
+                return [
+                    idx + 1,
+                    format(new Date(t.dateStart), 'dd/MM/yyyy'),
+                    "", // Bill No (Not in types? Leaving empty as per requirement)
+                    t.containerNo,
+                    t.licensePlate || "",
+                    is20 ? 1 : '',
+                    is40 ? 1 : '',
+                    is40R ? 1 : '',
+                    t.route,
+                    unitPrice,
+                    revenue,
+                    liftOn || '',
+                    liftOff || '',
+                    airport || '',
+                    totalAmt,
+                    t.nightStay ? (t.nightStayDays || 1) : '',
+                    t.notes || ""
+                ];
+            });
+
+            // Totals
+            const sum20 = customerTickets.reduce((s, t) => s + (String(t.size) === '20' ? 1 : 0), 0);
+            const sum40 = customerTickets.reduce((s, t) => s + (String(t.size) === '40' ? 1 : 0), 0);
+            const sum40R = customerTickets.reduce((s, t) => {
+                const sz = String(t.size);
+                return s + (sz === '40R0' || sz === '40R' ? 1 : 0);
+            }, 0);
+            const sumRev = customerTickets.reduce((s, t) => s + (t.revenue || 0), 0);
+            const sumLiftOn = customerTickets.reduce((s, t) => s + (t.liftOnFee || 0), 0);
+            const sumLiftOff = customerTickets.reduce((s, t) => s + (t.liftOffFee || 0), 0);
+            const sumAirport = customerTickets.reduce((s, t) => s + (t.airportFee || 0), 0);
+            const sumTotalAmt = sumRev + sumLiftOn + sumLiftOff + sumAirport;
+            const sumNight = customerTickets.reduce((s, t) => s + (t.nightStayDays || (t.nightStay ? 1 : 0)), 0);
+
+            const totalRow = [
+                "TỔNG CỘNG", "", "", "", "", sum20, sum40, sum40R,
+                "", "", sumRev,
+                sumLiftOn, sumLiftOff, sumAirport,
+                sumTotalAmt, sumNight, ""
+            ];
+
+            const wsData = [[''], [''], header1, header2, ...rows, totalRow];
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+            // Merges
+            ws['!merges'] = [
+                // Title
+                { s: { r: 0, c: 0 }, e: { r: 0, c: 16 } },
+                // Subtitle
+                { s: { r: 1, c: 0 }, e: { r: 1, c: 16 } },
+                // Headers (Row 2 & 3 / Index 2 & 3)
+                { s: { r: 2, c: 0 }, e: { r: 3, c: 0 } }, // STT
+                { s: { r: 2, c: 1 }, e: { r: 3, c: 1 } }, // Date
+                { s: { r: 2, c: 2 }, e: { r: 3, c: 2 } }, // Bill
+                { s: { r: 2, c: 3 }, e: { r: 3, c: 3 } }, // Cont
+                { s: { r: 2, c: 4 }, e: { r: 3, c: 4 } }, // BKS
+                { s: { r: 2, c: 5 }, e: { r: 2, c: 7 } }, // Qty (Horizontal)
+                { s: { r: 2, c: 8 }, e: { r: 3, c: 8 } }, // Route
+                { s: { r: 2, c: 9 }, e: { r: 3, c: 9 } }, // Unit Price
+                { s: { r: 2, c: 10 }, e: { r: 3, c: 10 } }, // Transport Fee
+                { s: { r: 2, c: 11 }, e: { r: 3, c: 11 } }, // Lift On
+                { s: { r: 2, c: 12 }, e: { r: 3, c: 12 } }, // Lift Off
+                { s: { r: 2, c: 13 }, e: { r: 3, c: 13 } }, // Airport
+                { s: { r: 2, c: 14 }, e: { r: 3, c: 14 } }, // Total Amt
+                { s: { r: 2, c: 15 }, e: { r: 3, c: 15 } }, // Night
+                { s: { r: 2, c: 16 }, e: { r: 3, c: 16 } }, // Note
+                // Total Row (Last Row)
+                { s: { r: wsData.length - 1, c: 0 }, e: { r: wsData.length - 1, c: 4 } } // TỔNG CỘNG (A-E)
+            ];
+
+            // Set Title/Subtitle Values
+            ws['A1'] = { v: 'BẢNG DOANH THU KHÁCH HÀNG', s: titleStyle };
+            ws['A2'] = { v: `Khách hàng: ${customerName} - ${timeLabel}`, s: subTitleStyle };
+
+            // Apply Styles
+            const range = XLSX.utils.decode_range(ws['!ref']!);
+
+            // Header Styles (Rows 2 & 3)
+            for (let R = 2; R <= 3; ++R) {
+                for (let C = 0; C <= 16; ++C) {
+                    const addr = XLSX.utils.encode_cell({ r: R, c: C });
+                    if (!ws[addr]) ws[addr] = { v: '', s: headerStyle };
+                    else ws[addr].s = headerStyle;
+                }
+            }
+
+            // Data Styles
+            for (let R = 4; R < range.e.r; ++R) {
+                for (let C = 0; C <= 16; ++C) {
+                    const addr = XLSX.utils.encode_cell({ r: R, c: C });
+                    const s: any = { ...cellStyle };
+
+                    // Alignments
+                    if ([0, 1, 5, 6, 7, 15].includes(C)) s.alignment = { ...s.alignment, horizontal: 'center' }; // Center
+                    else if ([9, 10, 11, 12, 13, 14].includes(C)) { // Money
+                        s.alignment = { ...s.alignment, horizontal: 'right' };
+                        s.numFmt = moneyFormat;
+                    } else {
+                        s.alignment = { ...s.alignment, horizontal: 'left', wrapText: true };
+                    }
+
+                    if (!ws[addr]) ws[addr] = { v: '', s };
+                    else ws[addr].s = s;
+                }
+            }
+
+            // Total Row Style
+            const tempVal = wsData.length - 1;
+            for (let C = 0; C <= 16; ++C) {
+                const addr = XLSX.utils.encode_cell({ r: tempVal, c: C });
+                const s: any = { ...cellStyle, font: { bold: true, name: 'Calibri' } };
+
+                if (C === 0) s.alignment = { ...s.alignment, horizontal: 'center' }; // TỔNG CỘNG
+                else if ([5, 6, 7, 15].includes(C)) s.alignment = { ...s.alignment, horizontal: 'center' };
+                else if ([9, 10, 11, 12, 13, 14].includes(C)) {
+                    s.alignment = { ...s.alignment, horizontal: 'right' };
+                    s.numFmt = moneyFormat;
+                }
+
+                if (!ws[addr]) ws[addr] = { v: '', s };
+                else ws[addr].s = s;
+            }
+
+
+            // Col Widths
+            ws['!cols'] = [
+                { wch: 5 },  // STT
+                { wch: 12 }, // Date
+                { wch: 10 }, // Bill
+                { wch: 12 }, // Cont
+                { wch: 10 }, // BKS
+                { wch: 5 }, { wch: 5 }, { wch: 5 }, // Qty
+                { wch: 30 }, // Route
+                { wch: 15 }, // Unit
+                { wch: 15 }, // Trans
+                { wch: 12 }, // LiftOn
+                { wch: 12 }, // LiftOff
+                { wch: 15 }, // Airport
+                { wch: 15 }, // Total
+                { wch: 8 },  // Night
+                { wch: 10 }  // Note
+            ];
+
+            const sheetName = customerName.substring(0, 31).replace(/[\\*?:/\[\]]/g, '_');
+            XLSX.utils.book_append_sheet(wb, ws, sheetName);
+        });
+
+        XLSX.writeFile(wb, `BangKe_KhachHang_${format(new Date(), 'ddMMyy')}.xlsx`);
     };
+
+
 
     return (
         <div className="space-y-6 font-sans">
@@ -220,16 +374,33 @@ export function CustomerRevenueTable({ tickets }: { tickets: TransportTicket[] }
                         </div>
                     </div>
 
-                    {/* Month Filter */}
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Tháng</label>
-                        <div className="relative">
-                            <input
-                                type="month"
+                    {/* Month filter */}
+                    <div className="flex gap-2">
+                        <div className="space-y-1.5 flex-1">
+                            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Tháng</label>
+                            <select
                                 value={filters.month}
                                 onChange={e => handleFilterChange('month', e.target.value)}
-                                className="w-full pl-4 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all hover:bg-slate-100 block"
-                            />
+                                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 outline-none appearance-none transition-all hover:bg-slate-100"
+                            >
+                                <option value="">Tất cả</option>
+                                {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                                    <option key={m} value={m.toString()}>Tháng {m}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="space-y-1.5 flex-1">
+                            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Năm</label>
+                            <select
+                                value={filters.year}
+                                onChange={e => handleFilterChange('year', e.target.value)}
+                                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 outline-none appearance-none transition-all hover:bg-slate-100"
+                            >
+                                <option value="">Tất cả</option>
+                                {[2023, 2024, 2025, 2026].map(y => (
+                                    <option key={y} value={y.toString()}>{y}</option>
+                                ))}
+                            </select>
                         </div>
                     </div>
 
@@ -238,7 +409,10 @@ export function CustomerRevenueTable({ tickets }: { tickets: TransportTicket[] }
                         <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Từ ngày</label>
                         <div className="relative">
                             <input
-                                type="date"
+                                type={filters.fromDate ? "date" : "text"}
+                                placeholder="dd/MM/yyyy"
+                                onFocus={(e) => (e.target.type = "date")}
+                                onBlur={(e) => { if (!filters.fromDate) e.target.type = "text"; }}
                                 value={filters.fromDate}
                                 onChange={e => handleFilterChange('fromDate', e.target.value)}
                                 className="w-full pl-4 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all hover:bg-slate-100 block"
@@ -251,7 +425,10 @@ export function CustomerRevenueTable({ tickets }: { tickets: TransportTicket[] }
                         <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Đến ngày</label>
                         <div className="relative">
                             <input
-                                type="date"
+                                type={filters.toDate ? "date" : "text"}
+                                placeholder="dd/MM/yyyy"
+                                onFocus={(e) => (e.target.type = "date")}
+                                onBlur={(e) => { if (!filters.toDate) e.target.type = "text"; }}
                                 value={filters.toDate}
                                 onChange={e => handleFilterChange('toDate', e.target.value)}
                                 className="w-full pl-4 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all hover:bg-slate-100 block"
@@ -311,7 +488,7 @@ export function CustomerRevenueTable({ tickets }: { tickets: TransportTicket[] }
                                                 {index + 1}
                                             </td>
                                             <td className="px-4 py-3 font-bold text-slate-700 w-48 truncate" title={ticket.customerCode}>{ticket.customerCode}</td>
-                                            <td className="px-4 py-3 text-center text-slate-600">{format(new Date(ticket.dateStart), 'dd/MM/yy')}</td>
+                                            <td className="px-4 py-3 text-center text-slate-600">{format(new Date(ticket.dateStart), 'dd/MM/yyyy')}</td>
                                             <td className="px-4 py-3 text-center text-slate-500">-</td>
                                             <td className="px-4 py-3 font-mono text-slate-600 font-bold">{ticket.containerNo}</td>
                                             <td className="px-4 py-3 font-medium text-slate-700">{ticket.licensePlate || ""}</td>

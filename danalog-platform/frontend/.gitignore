@@ -117,4 +117,11 @@ dist
 .yarn/install-state.gz
 .pnp.*
 .vercel
+# Environment variables
 .env*.local
+
+# Database
+db.json
+
+*.zip
+.npm-cache/

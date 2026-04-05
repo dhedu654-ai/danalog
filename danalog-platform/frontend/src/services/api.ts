@@ -1,85 +1,164 @@
+import { supabase } from './supabaseClient';
+import { TransportTicket, TransportOrder } from '../types';
 
-const API_URL = 'https://app-ctvt.onrender.com/api';
-
-
-const mapBackendToFrontend = (data: any): any => {
-    return {
-        ...data,
-        // Map mismatched fields
-        dateStart: data.startDate || data.dateStart,
-        dateEnd: data.endDate || data.dateEnd,
-        licensePlate: data.licensePlate || data.vehicleId,
-        customerCode: data.customerCode || (data.customerId ? data.customerId.replace('cust_', '').toUpperCase() : data.customerName),
-        size: data.containerSize || data.size,
-        fe: data.containerType || data.fe,
-        trips: data.tripCount || data.trips,
-        nightStay: data.overnightStay !== undefined ? data.overnightStay : data.nightStay,
-        nightStayDays: data.overnightNights || data.nightStayDays,
-
-        // Ensure numeric defaults to avoid NaN
-        revenue: data.revenue || 0,
-        driverSalary: data.driverSalary || 0
-    };
-};
+const API_URL = '/api'; // fallback for serverless functions
 
 export const api = {
-    getTickets: async () => {
-        try {
-            const res = await fetch(`${API_URL}/tickets`);
-            if (!res.ok) throw new Error('Failed to fetch tickets');
-            const data = await res.json();
-            return Array.isArray(data) ? data.map(mapBackendToFrontend) : [];
-        } catch (error) {
-            console.error('API getTickets error:', error);
-            return [];
-        }
+    // Orders (Direct Supabase)
+    getOrders: async () => {
+        const { data, error } = await supabase.from('Orders').select('*');
+        if (error) throw new Error(error.message);
+        return data.map(d => ({...d, containers: typeof d.containers === 'string' ? JSON.parse(d.containers) : d.containers}));
+    },
+    // Keep createOrder logic hitting our Vercel backend so it handles ticket creation securely
+    createOrder: (order: any) => fetch(`${API_URL}/orders`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(order)
+    }).then(r => r.json()),
+    
+    updateOrder: async (id: string, updates: any) => {
+        const { data, error } = await supabase.from('Orders').update(updates).eq('id', id).select();
+        if (error) throw new Error(error.message);
+        return data?.[0];
     },
 
+    // Tickets
+    getTickets: async (userInfo?: { username?: string, role?: string }) => {
+        let query = supabase.from('Tickets').select('*');
+        if (userInfo?.username && userInfo?.role === 'DRIVER') query = query.eq('driverUsername', userInfo.username);
+        const { data, error } = await query;
+        if (error) throw new Error(error.message);
+        return data.map(t => ({...t, statusHistory: typeof t.statusHistory === 'string' ? JSON.parse(t.statusHistory) : t.statusHistory}));
+    },
     saveTickets: async (tickets: any[]) => {
-        try {
-            const res = await fetch(`${API_URL}/tickets`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(tickets)
-            });
-            if (!res.ok) throw new Error('Failed to save tickets');
-            const data = await res.json();
-            return Array.isArray(data) ? data.map(mapBackendToFrontend) : mapBackendToFrontend(data);
-        } catch (error) {
-            console.error('API saveTickets error:', error);
-            throw error;
-        }
+        // Bulk save
+        const { data, error } = await supabase.from('Tickets').upsert(tickets).select();
+        if (error) throw new Error(error.message);
+        return data;
     },
-
-    createTicket: async (ticket: any) => {
-        try {
-            const res = await fetch(`${API_URL}/tickets`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(ticket)
-            });
-            if (!res.ok) throw new Error('Failed to create ticket');
-            const data = await res.json();
-            return mapBackendToFrontend(data);
-        } catch (error) {
-            console.error('API createTicket error:', error);
-            throw error;
-        }
-    },
-
     updateTicket: async (id: string, updates: any) => {
-        try {
-            const res = await fetch(`${API_URL}/tickets/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(updates)
-            });
-            if (!res.ok) throw new Error('Failed to update ticket');
-            const data = await res.json();
-            return mapBackendToFrontend(data);
-        } catch (error) {
-            console.error('API updateTicket error:', error);
-            throw error;
-        }
-    }
+        const { data, error } = await supabase.from('Tickets').update(updates).eq('id', id).select();
+        if(error) throw new Error(error.message);
+        return data?.[0];
+    },
+
+    // Route Configs
+    getRouteConfigs: async () => {
+        const { data, error } = await supabase.from('RouteConfigs').select('*');
+        if(error) throw new Error(error.message);
+        return data;
+    },
+    saveRouteConfigs: async (configs: any[]) => {
+        const { data, error } = await supabase.from('RouteConfigs').upsert(configs).select();
+        if(error) throw new Error(error.message);
+        return data;
+    },
+    updateRouteConfig: async (id: string, updates: any) => {
+         const { data, error } = await supabase.from('RouteConfigs').update(updates).eq('id', id).select();
+         if(error) throw new Error(error.message);
+         return data?.[0];
+    },
+    deleteRouteConfig: async (id: string) => {
+        const { error } = await supabase.from('RouteConfigs').delete().eq('id', id);
+        if(error) throw new Error(error.message);
+        return { success: true };
+    },
+
+    // Users
+    getUsers: async () => {
+        const { data, error } = await supabase.from('Users').select('*');
+        if(error) throw new Error(error.message);
+        return data;
+    },
+    updateUser: async (username: string, updates: any) => {
+        const { data, error } = await supabase.from('Users').update(updates).eq('username', username).select();
+        if(error) throw new Error(error.message);
+        return data?.[0];
+    },
+
+    // Standard CRUD conversions ...
+    getCustomers: async () => {
+        const { data, error } = await supabase.from('Customers').select('*');
+        if(error) throw new Error(error.message);
+        return data;
+    },
+    createCustomer: async (customer: any) => {
+         const { data, error } = await supabase.from('Customers').insert([customer]).select();
+         if(error) throw new Error(error.message);
+         return data?.[0];
+    },
+
+    // VERCEL SERVERLESS APIS (Keep fetching for complex logics)
+    dispatchSuggest: (ticketId: string) => fetch(`${API_URL}/dispatch/suggest`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ticketId })
+    }).then(r => r.json()),
+
+    dispatchAssign: (ticketId: string, driverId: string, assignType: string = 'manual', reason?: string, dispatcherUsername?: string, version?: number) =>
+        fetch(`${API_URL}/dispatch/assign`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticketId, driverId, assignType, reason, dispatcherUsername, version })
+        }).then(r => { if (r.status === 409) throw new Error('CONFLICT'); return r.json(); }),
+
+    dispatchAutoAssign: (ticketId: string) => fetch(`${API_URL}/dispatch/auto-assign`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ticketId })
+    }).then(r => r.json()),
+
+    respondToDispatch: (ticketId: string, response: string, rejectReasonCode?: string, reason?: string, driverUsername?: string) =>
+        fetch(`${API_URL}/dispatch/driver-response`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticketId, response, rejectReasonCode, reason, driverUsername })
+        }).then(r => r.json()),
+
+    getDashboardStats: () => fetch(`${API_URL}/dashboard/stats`).then(r => r.json()),
+    
+    getDispatchLogs: async () => {
+        const { data, error } = await supabase.from('DispatchLogs').select('*');
+        if(error) throw new Error(error.message);
+        return data.map(d => ({
+            ...d, 
+            candidates: typeof d.candidates === 'string' ? JSON.parse(d.candidates) : d.candidates,
+            rejectedCandidates: typeof d.rejectedCandidates === 'string' ? JSON.parse(d.rejectedCandidates) : d.rejectedCandidates
+        }));
+    },
+    
+    getNotifications: async () => {
+        const { data, error } = await supabase.from('Notifications').select('*').order('createdAt', { ascending: false });
+        if(error) throw new Error(error.message);
+        return data;
+    },
+    deleteAllNotifications: async () => {
+        const { error } = await supabase.from('Notifications').delete().neq('id', 0); // Delete all hack
+        if(error) throw new Error(error.message);
+        return { success: true };
+    },
+
+    getFuelTickets: async (username?: string) => {
+        let query = supabase.from('FuelTickets').select('*');
+        if(username) query = query.eq('driverUsername', username);
+        const { data, error } = await query;
+        if(error) throw new Error(error.message);
+        return data;
+    },
+
+    getPublishedSalaries: async () => {
+        const { data, error } = await supabase.from('PublishedSalaries').select('*');
+        if(error) throw new Error(error.message);
+        return data.map(d => ({...d, items: typeof d.items === 'string' ? JSON.parse(d.items) : d.items}));
+    },
+    publishSalary: (publication: any) => fetch(`${API_URL}/published-salaries`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(publication)
+    }).then(r => r.json()),
+
+    // Ticket corrections
+    getTicketCorrections: async () => {
+        const { data, error } = await supabase.from('TicketCorrections').select('*');
+        if(error) throw new Error(error.message);
+        return data;
+    },
+    requestTicketCorrection: (id: string, requestData: any) => fetch(`${API_URL}/tickets/${id}/correction-request`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestData)
+    }).then(r => r.json()),
+    reviewTicketCorrection: (id: string, reviewData: any) => fetch(`${API_URL}/ticket-corrections/${id}/review`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reviewData)
+    }).then(r => r.json()),
+
 };
