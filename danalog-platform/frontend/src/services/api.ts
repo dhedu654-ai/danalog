@@ -130,8 +130,30 @@ export const api = {
         if(error) throw new Error(error.message);
         return data;
     },
-    deleteAllNotifications: async () => {
-        const { error } = await supabase.from('Notifications').delete().neq('id', 0); // Delete all hack
+    markNotificationRead: async (id: string) => {
+        const { data, error } = await supabase.from('Notifications').update({ read: true }).eq('id', id).select();
+        if(error) throw new Error(error.message);
+        return data?.[0];
+    },
+    deleteNotification: async (id: string) => {
+        const { error } = await supabase.from('Notifications').delete().eq('id', id);
+        if(error) throw new Error(error.message);
+        return { success: true };
+    },
+    deleteAllNotifications: async (targetIdentifier?: string) => {
+        let query = supabase.from('Notifications').delete();
+        if (targetIdentifier) {
+            // If it looks like a role, filter by targetRole, otherwise by target username (message/to)
+            if (['ADMIN', 'CS', 'DISPATCHER', 'DRIVER'].includes(targetIdentifier)) {
+                query = query.eq('targetRole', targetIdentifier);
+            } else {
+                // Approximate for driver username if we don't have a direct column yet (should ideally be targetUsername)
+                query = query.ilike('message', `%${targetIdentifier}%`);
+            }
+        } else {
+            query = query.neq('id', 0);
+        }
+        const { error } = await query;
         if(error) throw new Error(error.message);
         return { success: true };
     },

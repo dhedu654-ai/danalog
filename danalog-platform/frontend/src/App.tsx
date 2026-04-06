@@ -222,16 +222,14 @@ function AppContent() {
 
     if (user?.role === 'DRIVER') {
         return (
-            <div className="bg-slate-900 min-h-screen flex justify-center">
-                <MobileDriverDashboard
-                    tickets={tickets}
-                    onUpdateTickets={handleUpdateTickets}
-                    onCreateTicket={handleCreateTicket}
-                    routeConfigs={routeConfigs}
-                    notifications={notifications}
-                    publishedSalaries={publishedSalaries}
-                />
-            </div>
+            <MobileDriverDashboard
+                tickets={tickets}
+                onUpdateTickets={handleUpdateTickets}
+                onCreateTicket={handleCreateTicket}
+                routeConfigs={routeConfigs}
+                notifications={notifications}
+                publishedSalaries={publishedSalaries}
+            />
         );
     }
 
