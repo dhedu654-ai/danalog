@@ -119,6 +119,11 @@ export const api = {
             rejectedCandidates: typeof d.rejectedCandidates === 'string' ? JSON.parse(d.rejectedCandidates) : d.rejectedCandidates
         }));
     },
+
+    getDriverResponses: async () => {
+        // Fallback for driver responses since migration moved them directly to Tickets and DispatchLogs status.
+        return [];
+    },
     
     getNotifications: async () => {
         const { data, error } = await supabase.from('Notifications').select('*').order('createdAt', { ascending: false });
