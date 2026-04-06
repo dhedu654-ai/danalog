@@ -38,6 +38,24 @@ export default function CreateTicket() {
     const [containerConfig, setContainerConfig] = useState({ mode: 'manual', requireImage: true });
     const [containerOption, setContainerOption] = useState('input'); // Default to 'input'
 
+    // Filter routes based on startDate and customer
+    useEffect(() => {
+        if (formData.customerId && mockMetadata?.customers) {
+            const customer = mockMetadata.customers.find(c => c.id === formData.customerId);
+            if (customer && customer.routes) {
+                const validRoutes = customer.routes.filter(r => {
+                    if (!r.effectiveDate) return true;
+                    return r.effectiveDate <= formData.startDate; // Filter by/before start date
+                });
+                setAvailableRoutes(validRoutes);
+            } else {
+                setAvailableRoutes([]);
+            }
+        } else {
+            setAvailableRoutes([]);
+        }
+    }, [formData.customerId, formData.startDate, mockMetadata]);
+
     // Init Data for Edit Mode
     useEffect(() => {
         if (editingTicket) {
@@ -50,7 +68,7 @@ export default function CreateTicket() {
             if (customer) {
                 custId = customer.id;
                 availableRoutesForCust = customer.routes || [];
-                setAvailableRoutes(availableRoutesForCust);
+                // setAvailableRoutes handled by dedicated useEffect
             }
 
             // Determine container option
@@ -165,11 +183,7 @@ export default function CreateTicket() {
             route: ''
         });
 
-        if (customer) {
-            setAvailableRoutes(customer.routes || []);
-        } else {
-            setAvailableRoutes([]);
-        }
+        // Available routes will be updated by useEffect based on customer and startDate
     };
 
     const handleRouteChange = (e) => {

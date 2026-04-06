@@ -3,7 +3,7 @@ import { useAppContext } from '../context/AppContext';
 import { Calendar, ChevronRight, ArrowLeft, User, Truck, DollarSign } from 'lucide-react';
 
 export default function SalarySlip() {
-    const { tickets, lastLicensePlate, mockMetadata, user, isSalaryPublished } = useAppContext();
+    const { tickets, lastLicensePlate, mockMetadata, user, isSalaryPublished, loading } = useAppContext();
     const [viewMode, setViewMode] = useState('list'); // 'list' | 'detail'
     const [selectedMonth, setSelectedMonth] = useState(null);
     const [filterYear, setFilterYear] = useState(new Date().getFullYear().toString());
@@ -114,6 +114,8 @@ export default function SalarySlip() {
         return list;
     }, [userTickets, filterYear, filterMonth, user, isSalaryPublished]);
 
+    if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Đang tải dữ liệu...</div>;
+
 
     // --- View Handling ---
 
@@ -159,8 +161,8 @@ export default function SalarySlip() {
                                 onChange={(e) => setFilterMonth(e.target.value)}
                             >
                                 <option value="">Tất cả</option>
-                                {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                                    <option key={m} value={m}>Tháng {m}</option>
+                                {[12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map(m => (
+                                    <option key={m} value={m.toString().padStart(2, '0')}>Tháng {m}</option>
                                 ))}
                             </select>
                         </div>

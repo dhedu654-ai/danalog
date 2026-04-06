@@ -7,9 +7,9 @@ export default function TicketList() {
     const { tickets, updateTicket, user } = useAppContext();
     const navigate = useNavigate();
 
-    const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'draft', 'sent'
-    const [filterTime, setFilterTime] = useState('month'); // 'month', 'range'
-    const [selectedMonth, setSelectedMonth] = useState('2023-03'); // Default to data month for demo
+    const [filterStatus, setFilterStatus] = useState('all');
+    const [filterTime, setFilterTime] = useState('month');
+    const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // Current month YYYY-MM
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
 
     const [selectedTicket, setSelectedTicket] = useState(null);
@@ -200,57 +200,56 @@ export default function TicketList() {
                             <input type="date" value={dateRange.end} onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))} style={{ maxWidth: '90px' }} />
                         </div>
                     ) : (
-                        <div style={{ display: 'flex', gap: '4px' }}>
                             <select
-                                value={selectedMonth.split('-')[0]}
-                                onChange={(e) => setSelectedMonth(prev => `${e.target.value}-${prev.split('-')[1]}`)}
+                                value={selectedMonth.split('-')[1]}
+                                onChange={(e) => setSelectedMonth(prev => `${prev.split('-')[0]}-${e.target.value}`)}
                                 style={{ padding: '4px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                             >
-                                <option value="2025">2025</option>
-                                <option value="2024">2024</option>
-                                <option value="2023">2023</option>
+                                {['12', '11', '10', '09', '08', '07', '06', '05', '04', '03', '02', '01'].map(m => (
+                                    <option key={m} value={m}>Tháng {m}</option>
+                                ))}
                             </select>
                             <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} style={{ padding: '4px', border: '1px solid #cbd5e1', borderRadius: '4px' }} />
                         </div>
                     )}
-                </div>
-            </div>
-
-            {/* List */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {filteredTickets.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-light)' }}>
-                        <FileText size={48} style={{ opacity: 0.3, marginBottom: '0.5rem' }} />
-                        <p>Không tìm thấy phiếu nào</p>
-                    </div>
-                ) : (
-                    filteredTickets.map(ticket => (
-                        <div key={ticket.id} className="card" onClick={() => setSelectedTicket(ticket)} style={{ marginBottom: 0, cursor: 'pointer', padding: '0.75rem 1rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                                <div style={{ flex: 1 }}>
-                                    <h4 style={{ marginBottom: '6px', fontSize: '1rem' }}>{ticket.route}</h4>
-                                    <div style={{ fontSize: '0.85rem', color: 'var(--text-light)', display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
-                                        <span style={{ fontWeight: 500, color: '#334155' }}>
-                                            {ticket.endDate ? `Kết thúc: ${formatDate(ticket.endDate)}` : formatDate(ticket.startDate || ticket.date)}
-                                        </span>
-                                        <span style={{ color: '#cbd5e1' }}>|</span>
-                                        <span>{ticket.containerSize ? `${ticket.containerSize}'` : '-'}</span>
-                                        <span style={{ color: '#cbd5e1' }}>|</span>
-                                        <span>{ticket.containerType === 'E' ? 'Empty' : (ticket.containerType === 'F' ? 'Full' : '-')}</span>
-                                    </div>
-                                    <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '4px' }}>
-                                        {ticket.licensePlate || ticket.vehicleId}
-                                    </div>
-                                </div>
-                                <div style={{ marginLeft: '8px' }}>
-                                    <StatusBadge status={ticket.status} />
-                                </div>
-                            </div>
-                        </div>
-                    ))
-                )}
             </div>
         </div>
+
+            {/* List */ }
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        {filteredTickets.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-light)' }}>
+                <FileText size={48} style={{ opacity: 0.3, marginBottom: '0.5rem' }} />
+                <p>Không tìm thấy phiếu nào</p>
+            </div>
+        ) : (
+            filteredTickets.map(ticket => (
+                <div key={ticket.id} className="card" onClick={() => setSelectedTicket(ticket)} style={{ marginBottom: 0, cursor: 'pointer', padding: '0.75rem 1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                        <div style={{ flex: 1 }}>
+                            <h4 style={{ marginBottom: '6px', fontSize: '1rem' }}>{ticket.route}</h4>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-light)', display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                                <span style={{ fontWeight: 500, color: '#334155' }}>
+                                    {ticket.endDate ? `Kết thúc: ${formatDate(ticket.endDate)}` : formatDate(ticket.startDate || ticket.date)}
+                                </span>
+                                <span style={{ color: '#cbd5e1' }}>|</span>
+                                <span>{ticket.containerSize ? `${ticket.containerSize}'` : '-'}</span>
+                                <span style={{ color: '#cbd5e1' }}>|</span>
+                                <span>{ticket.containerType === 'E' ? 'Empty' : (ticket.containerType === 'F' ? 'Full' : '-')}</span>
+                            </div>
+                            <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '4px' }}>
+                                {ticket.licensePlate || ticket.vehicleId}
+                            </div>
+                        </div>
+                        <div style={{ marginLeft: '8px' }}>
+                            <StatusBadge status={ticket.status} />
+                        </div>
+                    </div>
+                </div>
+            ))
+        )}
+    </div>
+        </div >
     );
 }
 

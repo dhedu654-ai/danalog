@@ -6,27 +6,9 @@ const AppContext = createContext();
 
 export function AppProvider({ children }) {
     // Load initial state from localStorage or use defaults (seed data)
-    const [tickets, setTickets] = useState(() => {
-        const saved = localStorage.getItem('tickets');
-        let currentTickets = saved ? JSON.parse(saved) : [];
-
-        // DEV: Merge seed tickets if they are not present?
-        // Or simply: if currentTickets has very few items (e.g. 0), load seed.
-        if (currentTickets.length === 0 && seedTickets && seedTickets.length > 0) {
-            return seedTickets;
-        }
-
-        // Also check if seedTickets contains new imported ones not in current?
-        // Let's filter seedTickets to find ones not in currentTickets by ID
-        const existingIds = new Set(currentTickets.map(t => t.id));
-        const newSeeds = seedTickets.filter(t => !existingIds.has(t.id));
-
-        if (newSeeds.length > 0) {
-            return [...newSeeds, ...currentTickets];
-        }
-
-        return currentTickets;
-    });
+    const [tickets, setTickets] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [publishedSalaries, setPublishedSalaries] = useState([]);
 
     const [user, setUser] = useState(() => {
         const saved = localStorage.getItem('user');
@@ -38,10 +20,25 @@ export function AppProvider({ children }) {
     });
 
     // key: "username_MM-YYYY", value: true/timestamp
-    const [publishedSalaries, setPublishedSalaries] = useState(() => {
-        const saved = localStorage.getItem('publishedSalaries');
-        return saved ? JSON.parse(saved) : {};
-    });
+    const fetchAllData = async () => {
+        try {
+            setLoading(true);
+            const [ticketsRes, salaryRes] = await Promise.all([
+                fetch('/api/tickets').then(r => r.json()),
+                fetch('/api/published-salaries').then(r => r.json())
+            ]);
+            setTickets(ticketsRes || []);
+            setPublishedSalaries(salaryRes || []);
+        } catch (err) {
+            console.error("Failed to fetch data:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchAllData();
+    }, []);
 
     const publishSalary = (username, monthStr) => {
         const key = `${username}_${monthStr}`;
@@ -53,17 +50,35 @@ export function AppProvider({ children }) {
     };
 
     const isSalaryPublished = (username, monthStr) => {
-        const key = `${username}_${monthStr}`;
-        return !!publishedSalaries[key];
+        // monthStr is typically YYYY-MM from our list logic
+        const [year, month] = monthStr.split('-').map(Number);
+        return publishedSalaries.some(ps =>
+            ps.driverUsername === username &&
+            ps.month === month &&
+            ps.year === year
+        );
     };
 
-    const login = (username, password) => {
-        // Simple role assignment: 'admin' is CS, everyone else is driver
-        const role = username === 'admin' ? 'cs' : 'driver';
-        const newUser = { username, role, name: username === 'admin' ? 'CS Manager' : `Tài xế ${username}` };
-        setUser(newUser);
-        localStorage.setItem('user', JSON.stringify(newUser));
-        return true;
+    const login = async (username, password) => {
+        try {
+            // driver-app backend usually runs on 3001
+            // driver-app now proxies to 3000
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+
+            if (response.ok) {
+                const newUser = await response.json();
+                setUser(newUser);
+                localStorage.setItem('user', JSON.stringify(newUser));
+                return true;
+            }
+        } catch (err) {
+            console.error("Login failed:", err);
+        }
+        return false;
     };
 
     const logout = () => {
@@ -160,11 +175,12 @@ export function AppProvider({ children }) {
 
         // API Call
         try {
-            await fetch('http://localhost:3001/api/tickets', {
+            await fetch('/api/tickets', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newTicket)
             });
+            fetchAllData(); // Refresh list
         } catch (err) {
             console.error("Failed to save ticket:", err);
         }
@@ -187,104 +203,60 @@ export function AppProvider({ children }) {
 
     const getTicketById = (id) => tickets.find(t => t.id === id);
 
-    // Mock Metadata
-    const mockMetadata = {
-        customers: [
-            {
-                id: 'cust_qzy',
-                name: 'QZY',
-                routes: [
-                    { id: 'r_qzy_1', name: 'Cảng Tiên Sa - Lao Bảo - Sunpaper Savannakhet (2 chiều)', price: 0, fuelNorm: '0L', containerConfig: { mode: 'manual', requireImage: true } },
-                    { id: 'r_qzy_2', name: 'Cảng Tiên Sa - Lao Bảo - Sunpaper Savannakhet (1 chiều)', price: 0, fuelNorm: '0L', containerConfig: { mode: 'manual', requireImage: true } }
-                ]
-            },
-            {
-                id: 'cust_steinweg',
-                name: 'STEINWEG',
-                routes: [
-                    { id: 'r_steinweg_1', name: 'Cảng Tiên Sa, Danang - Vientiane, Lào', price: 0, fuelNorm: '0L', containerConfig: { mode: 'manual', requireImage: true } }
-                ]
-            },
-            {
-                id: 'cust_vantuong',
-                name: 'VẠN TƯỢNG',
-                routes: [
-                    { id: 'r_vantuong_1', name: 'Salavan, Lào - CK Lalay - Cảng Tiên Sa', price: 0, fuelNorm: '0L', containerConfig: { mode: 'manual', requireImage: true } }
-                ]
-            },
-            {
-                id: 'cust_ast',
-                name: 'AST',
-                routes: [
-                    { id: 'r_ast_1', name: 'Cảng Tiên Sa, Đà Nẵng - Champasak, Lào', price: 0, fuelNorm: '0L', containerConfig: { mode: 'manual', requireImage: true } }
-                ]
-            },
-            {
-                id: 'cust_phunggiaphat',
-                name: 'PHÙNG GIA PHÁT',
-                routes: [
-                    { id: 'r_pgp_1', name: 'NM Tinh bột sắn, Sepon Lào - Cảng Tiên Sa', price: 0, fuelNorm: '0L', containerConfig: { mode: 'manual', requireImage: true } }
-                ]
-            },
-            {
-                id: 'cust_gemadept',
-                name: 'GEMADEPT-BỘT',
-                routes: [
-                    { id: 'r_gema_1', name: 'NM Tinh bột sắn, Sepon Lào - Cảng Tiên Sa', price: 0, fuelNorm: '0L', containerConfig: { mode: 'manual', requireImage: true } }
-                ]
-            },
-            {
-                id: 'cust_hyosung',
-                name: 'HYOSUNG',
-                routes: [
-                    { id: 'r_hyosung_1', name: 'Cảng Tiên Sa - HS Hyosung Quảng Nam', price: 0, fuelNorm: '0L', containerConfig: { mode: 'manual', requireImage: true } },
-                    { id: 'r_hyosung_2', name: 'Cảng Tiên Sa - HS Hyosung Quảng Nam (2 chuyến/ngày)', price: 0, fuelNorm: '0L', containerConfig: { mode: 'manual', requireImage: true } }
-                ]
-            },
-            {
-                id: 'cust_xidadong',
-                name: 'XIDADONG',
-                routes: [
-                    { id: 'r_xidadong_1', name: 'Cảng Tiên Sa - KCN Vsip Quảng Ngãi', price: 0, fuelNorm: '0L', containerConfig: { mode: 'manual', requireImage: true } }
-                ]
-            },
-            {
-                id: 'cust_general',
-                name: 'Nhiều khách hàng',
-                routes: [
-                    { id: 'r_tho_quang', name: 'Cảng Tiên Sa - KCN Thọ Quang', price: 0, fuelNorm: '0L', containerConfig: { mode: 'manual', requireImage: true } },
-                    { id: 'r_other', name: 'Khác', price: 0, fuelNorm: '0L', containerConfig: { mode: 'manual', requireImage: true } }
-                ]
-            },
-            {
-                id: 'cust_dnl',
-                name: 'Kho hàng DNL',
-                routes: [
-                    { id: 'r_dnl_20', name: 'Hàng hóa kho CFS cont 20\'', price: 0, fuelNorm: '0L', containerConfig: { mode: 'manual', requireImage: true } },
-                    { id: 'r_dnl_40', name: 'Hàng hóa kho CFS cont 40\'', price: 0, fuelNorm: '0L', containerConfig: { mode: 'manual', requireImage: true } }
-                ]
-            },
-            {
-                id: 'cust_depot',
-                name: 'Depot',
-                routes: [
-                    { id: 'r_depot_fix', name: 'Cont sửa chữa Danalog - Tiên Sa (và ngược lại)', price: 0, fuelNorm: '0L', containerConfig: { mode: 'manual', requireImage: true } }
-                ]
-            },
-            {
-                id: 'cust_trungchuyen',
-                name: 'TRUNG CHUYỂN',
-                routes: [
-                    { id: 'r_tc_1', name: 'Nội bộ kho bãi Danalog 1', price: 0, fuelNorm: '0L', containerConfig: { mode: 'manual', requireImage: false, value: 'Trung chuyển' } },
-                    { id: 'r_tc_2', name: 'Tàu - Bãi Cảng Tiên Sa', price: 0, fuelNorm: '0L', containerConfig: { mode: 'manual', requireImage: false, value: 'Trung chuyển' } }
-                ]
-            }
-        ],
-        overnightRates: {
-            in_city: 150000,
-            out_city: 200000
+    const [metadata, setMetadata] = useState(null);
+
+    const fetchMetadata = async () => {
+        try {
+            const [customersRes, routesRes] = await Promise.all([
+                fetch('http://localhost:3002/api/customers').then(r => r.json()),
+                fetch('http://localhost:3002/api/route-configs').then(r => r.json())
+            ]);
+
+            const customers = customersRes || [];
+            const routes = routesRes || [];
+
+            // Map routes to customers
+            const customersWithRoutes = customers.map(cust => {
+                const custRoutes = routes.filter(r => 
+                    r.status === 'ACTIVE' && (r.customer === cust.name || r.customer === cust.code)
+                );
+                return { ...cust, routes: custRoutes };
+            });
+
+            // Handle "General" or multi-customer routes if any? 
+            // The mock data had 'cust_general' with 'Nhiều khách hàng'.
+            // If they exist in DB, they should be covered.
+
+            // Handle Manual hardcoded customers from mock if missing in DB?
+            // For now, trust DB.
+
+            setMetadata({
+                customers: customersWithRoutes,
+                overnightRates: {
+                    in_city: 150000,
+                    out_city: 200000
+                }
+            });
+        } catch (err) {
+            console.error("Failed to fetch metadata:", err);
+            // Fallback to minimal or keep null
+            setMetadata({
+                customers: [],
+                overnightRates: {
+                    in_city: 150000,
+                    out_city: 200000
+                }
+            });
         }
     };
+
+    useEffect(() => {
+        fetchAllData();
+        fetchMetadata();
+    }, []);
+
+    // Alias for compatibility
+    const mockMetadata = metadata;
 
     // Get unique drivers list for filtering
     const getDriversList = () => {

@@ -1,4 +1,60 @@
 {
+  "users": [
+    {
+      "username": "admin",
+      "password": "admin123",
+      "role": "ADMIN",
+      "name": "Administrator"
+    },
+    {
+      "username": "cs_user",
+      "password": "password123",
+      "role": "CS",
+      "name": "CS Staff"
+    },
+    {
+      "username": "tiennd",
+      "password": "driver123",
+      "role": "DRIVER",
+      "name": "Nguyễn Đức Tiên",
+      "licensePlate": "43C-199.91"
+    },
+    {
+      "username": "anhnv",
+      "password": "driver123",
+      "role": "DRIVER",
+      "name": "Nguyễn Văn Anh",
+      "licensePlate": "43C-113.94"
+    },
+    {
+      "username": "thanhnv",
+      "password": "driver123",
+      "role": "DRIVER",
+      "name": "Nguyễn Văn Thành",
+      "licensePlate": "43C-444.55"
+    },
+    {
+      "username": "anhnt",
+      "password": "driver123",
+      "role": "DRIVER",
+      "name": "Nguyên Thế Anh",
+      "licensePlate": "43C 11394"
+    },
+    {
+      "username": "sanghv",
+      "password": "driver123",
+      "role": "DRIVER",
+      "name": "Hồ Viết Sáng",
+      "licensePlate": "43C 19909"
+    },
+    {
+      "username": "hannv",
+      "password": "driver123",
+      "role": "DRIVER",
+      "name": "Nguyễn Văn Hân",
+      "licensePlate": "43C 19991"
+    }
+  ],
   "tickets": [
     {
       "id": "imported_tiennd_4_1766477559724",
@@ -21,7 +77,8 @@
       "createdBy": "tiennd",
       "vehicleId": "43C11202",
       "createdAt": "2025-12-23T08:12:39.724Z",
-      "approvedDate": "2025-12-23T08:12:39.827Z"
+      "approvedDate": "2025-12-23T08:12:39.827Z",
+      "price": 500000
     },
     {
       "id": "imported_tiennd_5_1766477559827",
@@ -44,7 +101,8 @@
       "createdBy": "tiennd",
       "vehicleId": "43C11202",
       "createdAt": "2025-12-23T08:12:39.827Z",
-      "approvedDate": "2025-12-23T08:12:39.828Z"
+      "approvedDate": "2025-12-23T08:12:39.828Z",
+      "price": 500000
     },
     {
       "id": "imported_tiennd_6_1766477559828",
@@ -67,7 +125,8 @@
       "createdBy": "tiennd",
       "vehicleId": "43C11202",
       "createdAt": "2025-12-23T08:12:39.828Z",
-      "approvedDate": "2025-12-23T08:12:39.828Z"
+      "approvedDate": "2025-12-23T08:12:39.828Z",
+      "price": 500000
     },
     {
       "id": "imported_tiennd_7_1766477559828",
@@ -90,7 +149,8 @@
       "createdBy": "tiennd",
       "vehicleId": "43C11202",
       "createdAt": "2025-12-23T08:12:39.828Z",
-      "approvedDate": "2025-12-23T08:12:39.828Z"
+      "approvedDate": "2025-12-23T08:12:39.828Z",
+      "price": 500000
     },
     {
       "id": "imported_tiennd_8_1766477559828",
@@ -113,7 +173,8 @@
       "createdBy": "tiennd",
       "vehicleId": "43C11202",
       "createdAt": "2025-12-23T08:12:39.828Z",
-      "approvedDate": "2025-12-23T08:12:39.828Z"
+      "approvedDate": "2025-12-23T08:12:39.828Z",
+      "price": 500000
     },
     {
       "id": "imported_tiennd_9_1766477559828",
@@ -136,7 +197,8 @@
       "createdBy": "tiennd",
       "vehicleId": "43C11202",
       "createdAt": "2025-12-23T08:12:39.828Z",
-      "approvedDate": "2025-12-23T08:12:39.828Z"
+      "approvedDate": "2025-12-23T08:12:39.828Z",
+      "price": 500000
     },
     {
       "id": "imported_tiennd_10_1766477559828",
@@ -159,7 +221,8 @@
       "createdBy": "tiennd",
       "vehicleId": "43C11202",
       "createdAt": "2025-12-23T08:12:39.828Z",
-      "approvedDate": "2025-12-23T08:12:39.828Z"
+      "approvedDate": "2025-12-23T08:12:39.828Z",
+      "price": 500000
     },
     {
       "id": "imported_tiennd_11_1766477559828",
@@ -182,7 +245,8 @@
       "createdBy": "tiennd",
       "vehicleId": "43C11202",
       "createdAt": "2025-12-23T08:12:39.828Z",
-      "approvedDate": "2025-12-23T08:12:39.828Z"
+      "approvedDate": "2025-12-23T08:12:39.828Z",
+      "price": 500000
     },
     {
       "id": "imported_tiennd_12_1766477559828",
@@ -205,7 +269,8 @@
       "createdBy": "tiennd",
       "vehicleId": "43C11202",
       "createdAt": "2025-12-23T08:12:39.828Z",
-      "approvedDate": "2025-12-23T08:12:39.828Z"
+      "approvedDate": "2025-12-23T08:12:39.828Z",
+      "price": 500000
     },
     {
       "id": "imported_tiennd_13_1766477559828",
@@ -228,7 +293,8 @@
       "createdBy": "tiennd",
       "vehicleId": "43C11202",
       "createdAt": "2025-12-23T08:12:39.828Z",
-      "approvedDate": "2025-12-23T08:12:39.828Z"
+      "approvedDate": "2025-12-23T08:12:39.828Z",
+      "price": 500000
     },
     {
       "id": "imported_tiennd_14_1766477559828",
@@ -251,7 +317,8 @@
       "createdBy": "tiennd",
       "vehicleId": "43C11202",
       "createdAt": "2025-12-23T08:12:39.828Z",
-      "approvedDate": "2025-12-23T08:12:39.828Z"
+      "approvedDate": "2025-12-23T08:12:39.828Z",
+      "price": 500000
     },
     {
       "id": "imported_tiennd_15_1766477559828",
@@ -274,7 +341,8 @@
       "createdBy": "tiennd",
       "vehicleId": "43C11202",
       "createdAt": "2025-12-23T08:12:39.828Z",
-      "approvedDate": "2025-12-23T08:12:39.828Z"
+      "approvedDate": "2025-12-23T08:12:39.828Z",
+      "price": 500000
     },
     {
       "id": "imported_tiennd_16_1766477559828",
@@ -297,7 +365,8 @@
       "createdBy": "tiennd",
       "vehicleId": "43C11202",
       "createdAt": "2025-12-23T08:12:39.828Z",
-      "approvedDate": "2025-12-23T08:12:39.828Z"
+      "approvedDate": "2025-12-23T08:12:39.828Z",
+      "price": 500000
     },
     {
       "id": "imported_tiennd_17_1766477559828",
@@ -320,7 +389,8 @@
       "createdBy": "tiennd",
       "vehicleId": "43C11202",
       "createdAt": "2025-12-23T08:12:39.828Z",
-      "approvedDate": "2025-12-23T08:12:39.828Z"
+      "approvedDate": "2025-12-23T08:12:39.828Z",
+      "price": 500000
     },
     {
       "id": "imported_tiennd_18_1766477559828",
@@ -343,7 +413,8 @@
       "createdBy": "tiennd",
       "vehicleId": "43C11202",
       "createdAt": "2025-12-23T08:12:39.828Z",
-      "approvedDate": "2025-12-23T08:12:39.828Z"
+      "approvedDate": "2025-12-23T08:12:39.828Z",
+      "price": 500000
     },
     {
       "id": "imported_tiennd_20_1766477559829",
@@ -366,7 +437,8 @@
       "createdBy": "tiennd",
       "vehicleId": "43C11202",
       "createdAt": "2025-12-23T08:12:39.829Z",
-      "approvedDate": "2025-12-23T08:12:39.829Z"
+      "approvedDate": "2025-12-23T08:12:39.829Z",
+      "price": 500000
     },
     {
       "id": "imported_tiennd_21_1766477559829",
@@ -389,7 +461,8 @@
       "createdBy": "tiennd",
       "vehicleId": "43C11202",
       "createdAt": "2025-12-23T08:12:39.829Z",
-      "approvedDate": "2025-12-23T08:12:39.829Z"
+      "approvedDate": "2025-12-23T08:12:39.829Z",
+      "price": 500000
     },
     {
       "id": "imported_tiennd_22_1766477559829",
@@ -412,7 +485,8 @@
       "createdBy": "tiennd",
       "vehicleId": "43C11202",
       "createdAt": "2025-12-23T08:12:39.829Z",
-      "approvedDate": "2025-12-23T08:12:39.829Z"
+      "approvedDate": "2025-12-23T08:12:39.829Z",
+      "price": 500000
     },
     {
       "id": "imported_tiennd_23_1766477559829",
@@ -435,7 +509,8 @@
       "createdBy": "tiennd",
       "vehicleId": "43C11202",
       "createdAt": "2025-12-23T08:12:39.829Z",
-      "approvedDate": "2025-12-23T08:12:39.829Z"
+      "approvedDate": "2025-12-23T08:12:39.829Z",
+      "price": 500000
     },
     {
       "id": "imported_tiennd_24_1766477559829",
@@ -458,7 +533,8 @@
       "createdBy": "tiennd",
       "vehicleId": "43C11202",
       "createdAt": "2025-12-23T08:12:39.829Z",
-      "approvedDate": "2025-12-23T08:12:39.829Z"
+      "approvedDate": "2025-12-23T08:12:39.829Z",
+      "price": 500000
     },
     {
       "id": "imported_tiennd_25_1766477559829",
@@ -481,7 +557,8 @@
       "createdBy": "tiennd",
       "vehicleId": "43C11202",
       "createdAt": "2025-12-23T08:12:39.829Z",
-      "approvedDate": "2025-12-23T08:12:39.829Z"
+      "approvedDate": "2025-12-23T08:12:39.829Z",
+      "price": 500000
     },
     {
       "id": "imported_tiennd_26_1766477559829",
@@ -504,7 +581,8 @@
       "createdBy": "tiennd",
       "vehicleId": "43C11202",
       "createdAt": "2025-12-23T08:12:39.829Z",
-      "approvedDate": "2025-12-23T08:12:39.829Z"
+      "approvedDate": "2025-12-23T08:12:39.829Z",
+      "price": 500000
     },
     {
       "id": "imported_tiennd_28_1766477559829",
@@ -527,7 +605,8 @@
       "createdBy": "tiennd",
       "vehicleId": "43C11202",
       "createdAt": "2025-12-23T08:12:39.829Z",
-      "approvedDate": "2025-12-23T08:12:39.829Z"
+      "approvedDate": "2025-12-23T08:12:39.829Z",
+      "price": 500000
     },
     {
       "id": "imported_tiennd_29_1766477559829",
@@ -550,7 +629,8 @@
       "createdBy": "tiennd",
       "vehicleId": "43C11202",
       "createdAt": "2025-12-23T08:12:39.829Z",
-      "approvedDate": "2025-12-23T08:12:39.829Z"
+      "approvedDate": "2025-12-23T08:12:39.829Z",
+      "price": 500000
     },
     {
       "id": "imported_tiennd_30_1766477559829",
@@ -573,7 +653,8 @@
       "createdBy": "tiennd",
       "vehicleId": "43C11202",
       "createdAt": "2025-12-23T08:12:39.829Z",
-      "approvedDate": "2025-12-23T08:12:39.829Z"
+      "approvedDate": "2025-12-23T08:12:39.829Z",
+      "price": 500000
     },
     {
       "id": "imported_tiennd_31_1766477559829",
@@ -596,7 +677,8 @@
       "createdBy": "tiennd",
       "vehicleId": "43C11202",
       "createdAt": "2025-12-23T08:12:39.829Z",
-      "approvedDate": "2025-12-23T08:12:39.829Z"
+      "approvedDate": "2025-12-23T08:12:39.829Z",
+      "price": 500000
     },
     {
       "id": "imported_tiennd_32_1766477559829",
@@ -619,7 +701,8 @@
       "createdBy": "tiennd",
       "vehicleId": "43C11202",
       "createdAt": "2025-12-23T08:12:39.829Z",
-      "approvedDate": "2025-12-23T08:12:39.829Z"
+      "approvedDate": "2025-12-23T08:12:39.829Z",
+      "price": 500000
     },
     {
       "id": "imported_tiennd_33_1766477559829",
@@ -642,7 +725,8 @@
       "createdBy": "tiennd",
       "vehicleId": "43C11202",
       "createdAt": "2025-12-23T08:12:39.829Z",
-      "approvedDate": "2025-12-23T08:12:39.829Z"
+      "approvedDate": "2025-12-23T08:12:39.829Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_4_1766477559866",
@@ -665,7 +749,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_5_1766477559866",
@@ -688,7 +773,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_6_1766477559866",
@@ -711,7 +797,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_7_1766477559866",
@@ -734,7 +821,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_8_1766477559866",
@@ -757,7 +845,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_9_1766477559866",
@@ -780,7 +869,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_10_1766477559866",
@@ -803,7 +893,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_11_1766477559866",
@@ -826,7 +917,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_12_1766477559866",
@@ -849,7 +941,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_13_1766477559866",
@@ -872,7 +965,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_14_1766477559866",
@@ -895,7 +989,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_15_1766477559866",
@@ -918,7 +1013,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_16_1766477559866",
@@ -941,7 +1037,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_17_1766477559866",
@@ -964,7 +1061,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_18_1766477559866",
@@ -987,7 +1085,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_19_1766477559866",
@@ -1010,7 +1109,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_20_1766477559866",
@@ -1033,7 +1133,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_21_1766477559866",
@@ -1056,7 +1157,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_22_1766477559866",
@@ -1079,7 +1181,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_23_1766477559866",
@@ -1102,7 +1205,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_24_1766477559866",
@@ -1125,7 +1229,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_25_1766477559866",
@@ -1148,7 +1253,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_26_1766477559866",
@@ -1171,7 +1277,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_27_1766477559866",
@@ -1194,7 +1301,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_28_1766477559866",
@@ -1217,7 +1325,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_29_1766477559866",
@@ -1240,7 +1349,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_30_1766477559866",
@@ -1263,7 +1373,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_31_1766477559866",
@@ -1286,7 +1397,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_32_1766477559866",
@@ -1309,7 +1421,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_33_1766477559866",
@@ -1332,7 +1445,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_34_1766477559866",
@@ -1355,7 +1469,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_35_1766477559866",
@@ -1378,7 +1493,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_36_1766477559866",
@@ -1401,7 +1517,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_37_1766477559866",
@@ -1424,7 +1541,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_38_1766477559866",
@@ -1447,7 +1565,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_39_1766477559866",
@@ -1470,7 +1589,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_40_1766477559866",
@@ -1493,7 +1613,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_42_1766477559866",
@@ -1516,7 +1637,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_43_1766477559866",
@@ -1539,7 +1661,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_44_1766477559866",
@@ -1562,7 +1685,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_45_1766477559866",
@@ -1585,7 +1709,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_46_1766477559866",
@@ -1608,7 +1733,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_47_1766477559866",
@@ -1631,7 +1757,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_48_1766477559866",
@@ -1654,7 +1781,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_49_1766477559866",
@@ -1677,7 +1805,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_50_1766477559866",
@@ -1700,7 +1829,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_51_1766477559866",
@@ -1723,7 +1853,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_52_1766477559866",
@@ -1746,7 +1877,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_53_1766477559866",
@@ -1769,7 +1901,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_54_1766477559866",
@@ -1792,7 +1925,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_55_1766477559866",
@@ -1815,7 +1949,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_56_1766477559866",
@@ -1838,7 +1973,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     },
     {
       "id": "imported_anhnt_57_1766477559866",
@@ -1861,7 +1997,8 @@
       "createdBy": "anhnt",
       "vehicleId": "43C 11394",
       "createdAt": "2025-12-23T08:12:39.866Z",
-      "approvedDate": "2025-12-23T08:12:39.866Z"
+      "approvedDate": "2025-12-23T08:12:39.866Z",
+      "price": 500000
     }
   ]
 }

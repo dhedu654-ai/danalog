@@ -166,4 +166,34 @@ export const api = {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reviewData)
     }).then(r => r.json()),
 
+    // Fuel and Profile additions missing from migration
+    createFuelTicket: async (ticket: any) => {
+        const { data, error } = await supabase.from('FuelTickets').insert([ticket]).select();
+        if(error) throw new Error(error.message);
+        return data?.[0];
+    },
+    getProfileUpdateRequests: async (status?: string, username?: string) => {
+        let query = supabase.from('ProfileUpdateRequests').select('*');
+        if(status) query = query.eq('status', status);
+        if(username) query = query.eq('username', username);
+        const { data, error } = await query;
+        if(error) return []; // safe fallback
+        return data || [];
+    },
+    submitProfileUpdateRequest: async (request: any) => {
+        const { data, error } = await supabase.from('ProfileUpdateRequests').insert([request]).select();
+        if(error) throw new Error(error.message);
+        return data?.[0];
+    },
+    changePassword: async (request: any) => {
+        return fetch(`${API_URL}/users/change-password`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(request)
+        }).then(r => r.json());
+    },
+    updateProfileRequestStatus: async (requestId: string, status: string, approverUsername: string, notes?: string) => {
+        const { data, error } = await supabase.from('ProfileUpdateRequests').update({ status, approverUsername, approverNotes: notes }).eq('id', requestId).select();
+        if(error) throw new Error(error.message);
+        return data?.[0];
+    },
+
 };

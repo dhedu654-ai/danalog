@@ -29,7 +29,7 @@ function readDb() {
     if (!fs.existsSync(DB_FILE)) {
         // Initialize from seed if db.json doesn't exist
         const seedData = fs.existsSync(SEED_FILE) ? JSON.parse(fs.readFileSync(SEED_FILE)) : [];
-        const initialDb = { tickets: seedData };
+        const initialDb = { tickets: seedData, users: [] };
         fs.writeFileSync(DB_FILE, JSON.stringify(initialDb, null, 2));
         return initialDb;
     }
@@ -96,9 +96,29 @@ app.put('/api/tickets/:id', (req, res) => {
     }
 });
 
+// POST /api/login
+app.post('/api/login', (req, res) => {
+    try {
+        const { username, password } = req.body;
+        const db = readDb();
+        const users = db.users || [];
+
+        const user = users.find(u => u.username === username && u.password === password);
+        if (user) {
+            const { password, ...userWithoutPassword } = user;
+            res.json(userWithoutPassword);
+        } else {
+            res.status(401).json({ error: 'Invalid username or password' });
+        }
+    } catch (err) {
+        console.error("Login error:", err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 // The "catch-all" handler: for any request that doesn't
 // match one above, send back React's index.html file.
-app.get('*', (req, res) => {
+app.get(/.*/, (req, res) => {
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
