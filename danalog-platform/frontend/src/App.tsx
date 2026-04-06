@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { BrowserRouter, Routes, Route, useNavigate, useLocation, Navigate, Link } from 'react-router-dom'
 import { api } from './services/api'
 import { LogOut, ChevronDown, ChevronRight, Users, Map as MapIcon, Shield, Fuel, Truck, BarChart3, PieChart } from 'lucide-react'
 import { TicketList } from './components/TicketList'
@@ -40,8 +41,48 @@ import { CSTaskQueue } from './components/Dashboards/operators/CSTaskQueue';
 
 type TabType = 'dashboard' | 'cs_check' | 'ticket_corrections' | 'revenue_driver' | 'revenue_customer' | 'salary' | 'route_config' | 'settings' | 'user_management' | 'customer_management' | 'fuel_management' | 'dispatch_board' | 'dispatch_tracking' | 'dispatch_responses' | 'dispatch_logs' | 'dispatch_sla' | 'profile' | 'profile_approvals' | 'order_list' | 'db_overview' | 'db_operations' | 'db_dispatch_mgr' | 'db_fleet' | 'db_cs_mgr' | 'db_cs_quality' | 'db_revenue' | 'db_fuel' | 'db_dispatch_perf' | 'db_cs_review' | 'db_cs_task_queue' | 'db_driver' | 'db_driver_earnings';
 
+
+const revRouteMap: Record<string, string> = {
+    'dashboard': '/dashboard',
+    'db_overview': '/dashboard',
+    'db_operations': '/operations',
+    'db_dispatch_mgr': '/dispatch-manager',
+    'db_fleet': '/fleet',
+    'db_cs_mgr': '/cs-manager',
+    'db_cs_quality': '/cs-quality',
+    'db_revenue': '/revenue',
+    'db_fuel': '/fuel',
+    'db_dispatch_perf': '/dispatch-performance',
+    'db_cs_review': '/cs-review',
+    'db_cs_task_queue': '/cs-task-queue',
+    'dispatch_board': '/dispatch',
+    'dispatch_tracking': '/dispatch/tracking',
+    'dispatch_responses': '/dispatch/responses',
+    'dispatch_logs': '/dispatch/logs',
+    'dispatch_sla': '/dispatch/sla',
+    'order_list': '/orders',
+    'cs_check': '/cs/tickets',
+    'ticket_corrections': '/cs/corrections',
+    'revenue_driver': '/ketoan/revenue-driver',
+    'revenue_customer': '/ketoan/revenue-customer',
+    'salary': '/ketoan/salary',
+    'route_config': '/admin/routes',
+    'user_management': '/admin/users',
+    'customer_management': '/admin/customers',
+    'fuel_management': '/admin/fuel',
+    'profile': '/profile',
+    'profile_approvals': '/profile/approvals',
+    'db_driver': '/driver-dashboard',
+    'db_driver_earnings': '/driver-earnings'
+};
+
+const routeToTabMap: Record<string, TabType> = Object.fromEntries(Object.entries(revRouteMap).map(([k, v]) => [v, k as TabType]));
+
 function AppContent() {
     const { user, logout, isAuthenticated, isLoading } = useAuth();
+    const navigate = useNavigate();
+    const location = useLocation();
+    const activeTab = routeToTabMap[location.pathname] || 'dashboard';
 
     // RBAC Flags
     const isAdmin = user?.role === 'ADMIN';
@@ -57,8 +98,7 @@ function AppContent() {
     const canViewFinance = isAdmin || isAccountant;
     const canApproveProfiles = isAdmin || isDVLead || isCSLead || user?.role === 'KT_LEAD';
 
-    const [activeTab, setActiveTab] = useState<TabType>('dashboard');
-    const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+        const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
     const [isOrderFormOpen, setIsOrderFormOpen] = useState(false);
 
     // State for expanding menus
@@ -69,7 +109,7 @@ function AppContent() {
 
     // Dashboard navigation handler — passed to dashboard components for drill-down
     const handleDashboardNavigate = (tab: string, focusId?: string) => {
-        setActiveTab(tab as TabType);
+        navigate(revRouteMap[tab] || '/dashboard');
         if (focusId) setFocusedTicketId(focusId);
     };
 
@@ -327,92 +367,62 @@ function AppContent() {
         }
 
         if (targetTab) {
-            setActiveTab(targetTab);
+            navigate(revRouteMap[targetTab] || '/dashboard');
             setFocusedTicketId(relatedId);
         }
     };
 
     const renderContent = () => {
-        switch (activeTab) {
-            case 'dispatch_board':
-            case 'dispatch_tracking':
-            case 'dispatch_responses':
-            case 'dispatch_logs':
-            case 'dispatch_sla': {
-                const subPageMap: Record<string, any> = {
-                    'dispatch_board': 'board',
-                    'dispatch_tracking': 'tracking',
-                    'dispatch_responses': 'responses',
-                    'dispatch_logs': 'logs',
-                    'dispatch_sla': 'sla_config',
-                };
-                return <DispatchBoard tickets={tickets} currentUser={user} onRefreshTickets={handleRefreshTickets} focusedTicketId={focusedTicketId} onClearFocus={() => setFocusedTicketId(null)} activeSubPage={subPageMap[activeTab] || 'board'} />;
-            }
-            case 'order_list':
-                return <OrderList currentUser={user} onRefreshTickets={handleRefreshTickets} />;
-            case 'cs_check':
-                return <TicketList tickets={tickets} onUpdateTickets={handleUpdateTickets} onUpdateTicket={handleUpdateSingleTicket} routeConfigs={routeConfigs} currentUser={user} focusedTicketId={focusedTicketId} onClearFocus={() => setFocusedTicketId(null)} />;
-            case 'ticket_corrections':
-                return <CorrectionRequestList currentUser={user} />;
-            case 'revenue_driver':
-                return <DriverRevenueTable tickets={tickets} />;
-            case 'revenue_customer':
-                return <CustomerRevenueTable tickets={tickets} />;
-            case 'salary':
-                return <DriverSalaryTable
-                    tickets={tickets}
-                    routeConfigs={routeConfigs}
-                    publishedSalaries={publishedSalaries}
-                    users={users}
-                    onNotifySalary={handleNotifySalary}
-                />;
-            case 'route_config':
-                return <RouteConfigList configs={routeConfigs} onUpdateConfigs={handleUpdateRouteConfigs} isReadOnly={user?.role === 'CS'} />;
-            case 'user_management':
-                return <UserManagement users={users} onRefresh={async () => {
-                    const data = await api.getUsers();
-                    setUsers(data || []);
-                }} />;
-            case 'customer_management':
-                return <CustomerManagement />;
-            case 'fuel_management':
-                return <FuelManagement users={users} />;
-            case 'profile':
-                return <UserProfile currentUser={user} onRefreshUser={() => { /* Triggered on app level auth fetch typically */ }} />;
-            case 'profile_approvals':
-                return <ProfileApprovals currentUser={user} onUserUpdated={async () => {
-                    const data = await api.getUsers();
-                    setUsers(data || []);
-                }} />;
-            // === NEW DASHBOARD SCREENS ===
-            case 'db_overview':
-            case 'dashboard':
-                return <CompanyOverviewDashboard tickets={tickets} onNavigate={handleDashboardNavigate} />;
-            case 'db_operations':
-                return <OperationsDashboard tickets={tickets} onNavigate={handleDashboardNavigate} />;
-            case 'db_dispatch_mgr':
-                return <DispatchManagerDashboard tickets={tickets} onNavigate={handleDashboardNavigate} />;
-            case 'db_fleet':
-                return <FleetDashboardNew tickets={tickets} onNavigate={handleDashboardNavigate} />;
-            case 'db_cs_mgr':
-                return <CSManagerDashboard tickets={tickets} onNavigate={handleDashboardNavigate} />;
-            case 'db_cs_quality':
-                return <CSQualityDashboard tickets={tickets} onNavigate={handleDashboardNavigate} />;
-            case 'db_revenue':
-                return <RevenueDashboard tickets={tickets} onNavigate={handleDashboardNavigate} />;
-            case 'db_fuel':
-                return <FuelDashboard tickets={tickets} onNavigate={handleDashboardNavigate} />;
-            case 'db_dispatch_perf':
-                return <DispatchPerformanceDashboard tickets={tickets} currentUser={user} onNavigate={handleDashboardNavigate} />;
-            case 'db_cs_review':
-                return <CSReviewDashboard tickets={tickets} currentUser={user} onNavigate={handleDashboardNavigate} />;
-            case 'db_cs_task_queue':
-                return <CSTaskQueue tickets={tickets} currentUser={user} onNavigate={handleDashboardNavigate} />;
-            case 'db_driver':
-                return <DriverDashboardNew tickets={tickets} currentUser={user} onNavigate={handleDashboardNavigate} />;
-            case 'db_driver_earnings':
-                return <DriverEarnings tickets={tickets} currentUser={user} />;
-        }
+        return (
+            <Routes>
+                <Route path="/" element={<Navigate to="/dashboard" />} />
+                
+                {/* Dispatch */}
+                <Route path="/dispatch" element={<DispatchBoard tickets={tickets} currentUser={user} onRefreshTickets={handleRefreshTickets} focusedTicketId={focusedTicketId} onClearFocus={() => setFocusedTicketId(null)} activeSubPage="board" />} />
+                <Route path="/dispatch/tracking" element={<DispatchBoard tickets={tickets} currentUser={user} onRefreshTickets={handleRefreshTickets} focusedTicketId={focusedTicketId} onClearFocus={() => setFocusedTicketId(null)} activeSubPage="tracking" />} />
+                <Route path="/dispatch/responses" element={<DispatchBoard tickets={tickets} currentUser={user} onRefreshTickets={handleRefreshTickets} focusedTicketId={focusedTicketId} onClearFocus={() => setFocusedTicketId(null)} activeSubPage="responses" />} />
+                <Route path="/dispatch/logs" element={<DispatchBoard tickets={tickets} currentUser={user} onRefreshTickets={handleRefreshTickets} focusedTicketId={focusedTicketId} onClearFocus={() => setFocusedTicketId(null)} activeSubPage="logs" />} />
+                <Route path="/dispatch/sla" element={<DispatchBoard tickets={tickets} currentUser={user} onRefreshTickets={handleRefreshTickets} focusedTicketId={focusedTicketId} onClearFocus={() => setFocusedTicketId(null)} activeSubPage="sla_config" />} />
+                
+                {/* Orders / Tickets */}
+                <Route path="/orders" element={<OrderList currentUser={user} onRefreshTickets={handleRefreshTickets} />} />
+                <Route path="/cs/tickets" element={<TicketList tickets={tickets} onUpdateTickets={handleUpdateTickets} onUpdateTicket={handleUpdateSingleTicket} routeConfigs={routeConfigs} currentUser={user} focusedTicketId={focusedTicketId} onClearFocus={() => setFocusedTicketId(null)} />} />
+                <Route path="/cs/corrections" element={<CorrectionRequestList currentUser={user} />} />
+                
+                {/* Finance */}
+                <Route path="/ketoan/revenue-driver" element={<DriverRevenueTable tickets={tickets} />} />
+                <Route path="/ketoan/revenue-customer" element={<CustomerRevenueTable tickets={tickets} />} />
+                <Route path="/ketoan/salary" element={<DriverSalaryTable tickets={tickets} routeConfigs={routeConfigs} publishedSalaries={publishedSalaries} users={users} onNotifySalary={handleNotifySalary} />} />
+                
+                {/* Admin */}
+                <Route path="/admin/routes" element={<RouteConfigList configs={routeConfigs} onUpdateConfigs={handleUpdateRouteConfigs} isReadOnly={user?.role === 'CS'} />} />
+                <Route path="/admin/users" element={<UserManagement users={users} onRefresh={async () => { const data = await api.getUsers(); setUsers(data || []); }} />} />
+                <Route path="/admin/customers" element={<CustomerManagement />} />
+                <Route path="/admin/fuel" element={<FuelManagement users={users} />} />
+                
+                {/* Profile */}
+                <Route path="/profile" element={<UserProfile currentUser={user} onRefreshUser={() => {}} />} />
+                <Route path="/profile/approvals" element={<ProfileApprovals currentUser={user} onUserUpdated={async () => { const data = await api.getUsers(); setUsers(data || []); }} />} />
+                
+                {/* Dashboards */}
+                <Route path="/dashboard" element={<CompanyOverviewDashboard tickets={tickets} onNavigate={handleDashboardNavigate} />} />
+                <Route path="/operations" element={<OperationsDashboard tickets={tickets} onNavigate={handleDashboardNavigate} />} />
+                <Route path="/dispatch-manager" element={<DispatchManagerDashboard tickets={tickets} onNavigate={handleDashboardNavigate} />} />
+                <Route path="/fleet" element={<FleetDashboardNew tickets={tickets} onNavigate={handleDashboardNavigate} />} />
+                <Route path="/cs-manager" element={<CSManagerDashboard tickets={tickets} onNavigate={handleDashboardNavigate} />} />
+                <Route path="/cs-quality" element={<CSQualityDashboard tickets={tickets} onNavigate={handleDashboardNavigate} />} />
+                <Route path="/revenue" element={<RevenueDashboard tickets={tickets} onNavigate={handleDashboardNavigate} />} />
+                <Route path="/fuel" element={<FuelDashboard tickets={tickets} onNavigate={handleDashboardNavigate} />} />
+                <Route path="/dispatch-performance" element={<DispatchPerformanceDashboard tickets={tickets} currentUser={user} onNavigate={handleDashboardNavigate} />} />
+                <Route path="/cs-review" element={<CSReviewDashboard tickets={tickets} currentUser={user} onNavigate={handleDashboardNavigate} />} />
+                <Route path="/cs-task-queue" element={<CSTaskQueue tickets={tickets} currentUser={user} onNavigate={handleDashboardNavigate} />} />
+                <Route path="/driver-dashboard" element={<DriverDashboardNew tickets={tickets} currentUser={user} onNavigate={handleDashboardNavigate} />} />
+                <Route path="/driver-earnings" element={<DriverEarnings tickets={tickets} currentUser={user} />} />
+                
+                {/* Fallback */}
+                <Route path="*" element={<Navigate to="/dashboard" />} />
+            </Routes>
+        );
     };
 
     const getHeaderTitle = () => {
@@ -498,39 +508,39 @@ function AppContent() {
                                 {/* Admin dashboards */}
                                 {isAdmin && (
                                     <>
-                                        <NavItem label="Tổng quan Công ty" active={activeTab === 'dashboard' || activeTab === 'db_overview'} onClick={() => setActiveTab('dashboard')} indent />
-                                        <NavItem label="Vận hành" active={activeTab === 'db_operations'} onClick={() => setActiveTab('db_operations')} indent />
+                                        <NavItem label="Tổng quan Công ty" active={activeTab === 'dashboard' || activeTab === 'db_overview'} onClick={() => navigate(revRouteMap['dashboard'])} indent />
+                                        <NavItem label="Vận hành" active={activeTab === 'db_operations'} onClick={() => navigate(revRouteMap['db_operations'])} indent />
                                     </>
                                 )}
                                 {/* Dispatch Manager dashboards */}
                                 {(isAdmin || isDVLead) && (
                                     <>
-                                        <NavItem label="Dispatch Manager" active={activeTab === 'db_dispatch_mgr'} onClick={() => setActiveTab('db_dispatch_mgr')} indent />
-                                        <NavItem label="Hiệu suất Đội xe" active={activeTab === 'db_fleet'} onClick={() => setActiveTab('db_fleet')} indent />
+                                        <NavItem label="Dispatch Manager" active={activeTab === 'db_dispatch_mgr'} onClick={() => navigate(revRouteMap['db_dispatch_mgr'])} indent />
+                                        <NavItem label="Hiệu suất Đội xe" active={activeTab === 'db_fleet'} onClick={() => navigate(revRouteMap['db_fleet'])} indent />
                                     </>
                                 )}
                                 {/* CS Manager dashboards */}
                                 {(isAdmin || isCSLead) && (
                                     <>
-                                        <NavItem label="CS Manager" active={activeTab === 'db_cs_mgr'} onClick={() => setActiveTab('db_cs_mgr')} indent />
-                                        <NavItem label="Chất lượng DL" active={activeTab === 'db_cs_quality'} onClick={() => setActiveTab('db_cs_quality')} indent />
+                                        <NavItem label="CS Manager" active={activeTab === 'db_cs_mgr'} onClick={() => navigate(revRouteMap['db_cs_mgr'])} indent />
+                                        <NavItem label="Chất lượng DL" active={activeTab === 'db_cs_quality'} onClick={() => navigate(revRouteMap['db_cs_quality'])} indent />
                                     </>
                                 )}
                                 {/* Finance dashboards */}
                                 {(isAdmin || isAccountant || isCSLead || isCS) && (
                                     <>
-                                        <NavItem label="Doanh thu" active={activeTab === 'db_revenue'} onClick={() => setActiveTab('db_revenue')} indent />
-                                        <NavItem label="Nhiên liệu" active={activeTab === 'db_fuel'} onClick={() => setActiveTab('db_fuel')} indent />
+                                        <NavItem label="Doanh thu" active={activeTab === 'db_revenue'} onClick={() => navigate(revRouteMap['db_revenue'])} indent />
+                                        <NavItem label="Nhiên liệu" active={activeTab === 'db_fuel'} onClick={() => navigate(revRouteMap['db_fuel'])} indent />
                                     </>
                                 )}
                                 {/* Operator dashboards */}
                                 {(isDispatcher || isDVLead) && (
-                                    <NavItem label="Hiệu suất cá nhân" active={activeTab === 'db_dispatch_perf'} onClick={() => setActiveTab('db_dispatch_perf')} indent />
+                                    <NavItem label="Hiệu suất cá nhân" active={activeTab === 'db_dispatch_perf'} onClick={() => navigate(revRouteMap['db_dispatch_perf'])} indent />
                                 )}
                                 {(isCS || isCSLead) && (
                                     <>
-                                        <NavItem label="CS Review" active={activeTab === 'db_cs_review'} onClick={() => setActiveTab('db_cs_review')} indent />
-                                        <NavItem label="CS Task Queue" active={activeTab === 'db_cs_task_queue'} onClick={() => setActiveTab('db_cs_task_queue')} indent />
+                                        <NavItem label="CS Review" active={activeTab === 'db_cs_review'} onClick={() => navigate(revRouteMap['db_cs_review'])} indent />
+                                        <NavItem label="CS Task Queue" active={activeTab === 'db_cs_task_queue'} onClick={() => navigate(revRouteMap['db_cs_task_queue'])} indent />
                                     </>
                                 )}
                             </div>
@@ -553,11 +563,11 @@ function AppContent() {
                             </div>
                             {isDispatchOpen && (
                                 <div className="ml-4 border-l border-slate-800 pl-2 space-y-0.5 pb-1">
-                                    <NavItem label="Bảng điều vận" active={activeTab === 'dispatch_board'} onClick={() => setActiveTab('dispatch_board')} indent />
-                                    <NavItem label="Theo dõi tổng quát" active={activeTab === 'dispatch_tracking'} onClick={() => setActiveTab('dispatch_tracking')} indent />
-                                    <NavItem label="Phản hồi lái xe" active={activeTab === 'dispatch_responses'} onClick={() => setActiveTab('dispatch_responses')} indent />
-                                    <NavItem label="Lịch sử phân công" active={activeTab === 'dispatch_logs'} onClick={() => setActiveTab('dispatch_logs')} indent />
-                                    <NavItem label="Cấu hình SLA" active={activeTab === 'dispatch_sla'} onClick={() => setActiveTab('dispatch_sla')} indent />
+                                    <NavItem label="Bảng điều vận" active={activeTab === 'dispatch_board'} onClick={() => navigate(revRouteMap['dispatch_board'])} indent />
+                                    <NavItem label="Theo dõi tổng quát" active={activeTab === 'dispatch_tracking'} onClick={() => navigate(revRouteMap['dispatch_tracking'])} indent />
+                                    <NavItem label="Phản hồi lái xe" active={activeTab === 'dispatch_responses'} onClick={() => navigate(revRouteMap['dispatch_responses'])} indent />
+                                    <NavItem label="Lịch sử phân công" active={activeTab === 'dispatch_logs'} onClick={() => navigate(revRouteMap['dispatch_logs'])} indent />
+                                    <NavItem label="Cấu hình SLA" active={activeTab === 'dispatch_sla'} onClick={() => navigate(revRouteMap['dispatch_sla'])} indent />
                                 </div>
                             )}
                         </>
@@ -577,9 +587,9 @@ function AppContent() {
                             </div>
                             {isCSOpen && (
                                 <div className="ml-4 border-l border-slate-800 pl-2 space-y-0.5 pb-1">
-                                    <NavItem label="Danh sách Đơn hàng" active={activeTab === 'order_list'} onClick={() => setActiveTab('order_list')} indent />
-                                    <NavItem label="CS kiểm tra phiếu" active={activeTab === 'cs_check'} onClick={() => setActiveTab('cs_check')} indent />
-                                    <NavItem label="Yêu cầu sửa đổi" active={activeTab === 'ticket_corrections'} onClick={() => setActiveTab('ticket_corrections')} indent />
+                                    <NavItem label="Danh sách Đơn hàng" active={activeTab === 'order_list'} onClick={() => navigate(revRouteMap['order_list'])} indent />
+                                    <NavItem label="CS kiểm tra phiếu" active={activeTab === 'cs_check'} onClick={() => navigate(revRouteMap['cs_check'])} indent />
+                                    <NavItem label="Yêu cầu sửa đổi" active={activeTab === 'ticket_corrections'} onClick={() => navigate(revRouteMap['ticket_corrections'])} indent />
                                 </div>
                             )}
                         </>
@@ -599,11 +609,11 @@ function AppContent() {
                             </div>
                             {isRevenueOpen && (
                                 <div className="ml-4 border-l border-slate-800 pl-2 space-y-0.5 pb-1">
-                                    <NavItem label="Theo lái xe" active={activeTab === 'revenue_driver'} onClick={() => setActiveTab('revenue_driver')} indent />
-                                    <NavItem label="Theo khách hàng" active={activeTab === 'revenue_customer'} onClick={() => setActiveTab('revenue_customer')} indent />
+                                    <NavItem label="Theo lái xe" active={activeTab === 'revenue_driver'} onClick={() => navigate(revRouteMap['revenue_driver'])} indent />
+                                    <NavItem label="Theo khách hàng" active={activeTab === 'revenue_customer'} onClick={() => navigate(revRouteMap['revenue_customer'])} indent />
                                 </div>
                             )}
-                            <NavItem label="Bảng kê Lương" icon={<Shield size={18} />} active={activeTab === 'salary'} onClick={() => setActiveTab('salary')} />
+                            <NavItem label="Bảng kê Lương" icon={<Shield size={18} />} active={activeTab === 'salary'} onClick={() => navigate(revRouteMap['salary'])} />
                         </>
                     )}
 
@@ -613,24 +623,24 @@ function AppContent() {
                             <div className="pt-4 pb-1 px-5"><span className="text-[10px] font-bold uppercase tracking-widest text-slate-600">Quản lý</span></div>
                             {canViewCS && (
                                 <>
-                                    <NavItem label="Cấu hình Tuyến" icon={<MapIcon size={18} />} active={activeTab === 'route_config'} onClick={() => setActiveTab('route_config')} />
-                                    <NavItem label="Khách hàng" icon={<Users size={18} />} active={activeTab === 'customer_management'} onClick={() => setActiveTab('customer_management')} />
+                                    <NavItem label="Cấu hình Tuyến" icon={<MapIcon size={18} />} active={activeTab === 'route_config'} onClick={() => navigate(revRouteMap['route_config'])} />
+                                    <NavItem label="Khách hàng" icon={<Users size={18} />} active={activeTab === 'customer_management'} onClick={() => navigate(revRouteMap['customer_management'])} />
                                 </>
                             )}
                             {(canViewCS || canViewDispatch || canViewFinance) && (
-                                <NavItem label="Nhiên liệu" icon={<Fuel size={18} />} active={activeTab === 'fuel_management'} onClick={() => setActiveTab('fuel_management')} />
+                                <NavItem label="Nhiên liệu" icon={<Fuel size={18} />} active={activeTab === 'fuel_management'} onClick={() => navigate(revRouteMap['fuel_management'])} />
                             )}
                             {isAdmin && (
-                                <NavItem label="Quản lý Tài khoản" icon={<Shield size={18} />} active={activeTab === 'user_management'} onClick={() => setActiveTab('user_management')} />
+                                <NavItem label="Quản lý Tài khoản" icon={<Shield size={18} />} active={activeTab === 'user_management'} onClick={() => navigate(revRouteMap['user_management'])} />
                             )}
                         </>
                     )}
 
                     {/* ── CÁ NHÂN ── */}
                     <div className="pt-4 pb-1 px-5"><span className="text-[10px] font-bold uppercase tracking-widest text-slate-600">Cá nhân</span></div>
-                    <NavItem label="Hồ sơ của tôi" icon={<Users size={18} />} active={activeTab === 'profile'} onClick={() => setActiveTab('profile')} />
+                    <NavItem label="Hồ sơ của tôi" icon={<Users size={18} />} active={activeTab === 'profile'} onClick={() => navigate(revRouteMap['profile'])} />
                     {canApproveProfiles && (
-                        <NavItem label="Duyệt hồ sơ" icon={<Shield size={18} />} active={activeTab === 'profile_approvals'} onClick={() => setActiveTab('profile_approvals')} />
+                        <NavItem label="Duyệt hồ sơ" icon={<Shield size={18} />} active={activeTab === 'profile_approvals'} onClick={() => navigate(revRouteMap['profile_approvals'])} />
                     )}
                 </nav>
 
@@ -698,7 +708,7 @@ function AppContent() {
                         
                         <div
                             className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => setActiveTab('profile')}
+                        onClick={() => navigate(revRouteMap['profile'])}
                         title="Vào trang cá nhân"
                     >
                         <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold overflow-hidden">
@@ -777,9 +787,11 @@ function StatCard({ label, value, subtext, color }: any) {
 
 function App() {
     return (
-        <AuthProvider>
-            <AppContent />
-        </AuthProvider>
+        <BrowserRouter>
+            <AuthProvider>
+                <AppContent />
+            </AuthProvider>
+        </BrowserRouter>
     )
 }
 
