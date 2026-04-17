@@ -1275,9 +1275,9 @@ const DEFAULT_ROUTES = [
 function readDb() {
     try {
         if (!fs.existsSync(DB_FILE)) {
-            return {
+            const initialDb = {
                 tickets: [],
-                users: DEFAULT_USERS,
+                users: JSON.parse(JSON.stringify(DEFAULT_USERS)), // deep copy to avoid modifying const
                 routeConfigs: DEFAULT_ROUTES,
                 publishedSalaries: [],
                 notifications: [],
@@ -1286,6 +1286,13 @@ function readDb() {
                 dispatch_config: DEFAULT_DISPATCH_CONFIG,
                 sla_config: DEFAULT_SLA_CONFIG
             };
+            initialDb.users.forEach(u => {
+                if (u.password && !u.password.startsWith('$2a$') && !u.password.startsWith('$2b$')) {
+                    u.password = bcrypt.hashSync(u.password, 10);
+                }
+            });
+            fs.writeFileSync(DB_FILE, JSON.stringify(initialDb, null, 2));
+            return initialDb;
         }
         const data = fs.readFileSync(DB_FILE, 'utf8');
         const db = JSON.parse(data);
