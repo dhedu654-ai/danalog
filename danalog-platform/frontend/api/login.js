@@ -25,7 +25,7 @@ export default async function handler(req, res) {
 
             // Don't send password back
             const { password: p, ...userWithoutPassword } = user;
-            return res.json(userWithoutPassword);
+            return res.json({ user: userWithoutPassword, token: 'vercel-session' });
         } else {
             return res.status(401).json({ error: 'Invalid username or password' });
         }
