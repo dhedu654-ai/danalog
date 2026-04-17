@@ -43,7 +43,7 @@ export const CSLeadSchedule: React.FC<Props> = ({ tickets, users, currentUser })
         let baseTickets = tickets;
         if (dateRange && dateRange.start && dateRange.end) { 
             baseTickets = baseTickets.filter(t => { 
-                const d = new Date(t.dateStart || t.dateEnd || t.createdAt || new Date()); 
+                const d = new Date(t.dateStart || t.dateEnd || new Date()); 
                 return d.getTime() >= dateRange.start.getTime() && d.getTime() <= dateRange.end.getTime(); 
             }); 
         }
@@ -64,7 +64,7 @@ export const CSLeadSchedule: React.FC<Props> = ({ tickets, users, currentUser })
         let result = tickets;
         if (dateRange && dateRange.start && dateRange.end) { 
             result = result.filter(t => { 
-                const d = new Date(t.dateStart || t.dateEnd || t.createdAt || new Date()); 
+                const d = new Date(t.dateStart || t.dateEnd || new Date()); 
                 return d.getTime() >= dateRange.start.getTime() && d.getTime() <= dateRange.end.getTime(); 
             }); 
         }

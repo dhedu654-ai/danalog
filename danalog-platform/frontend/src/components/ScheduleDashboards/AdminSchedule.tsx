@@ -33,7 +33,7 @@ export const AdminSchedule: React.FC<Props> = ({ tickets, users, currentUser }) 
         fetchCorrections();
     }, []);
 
-    const dateFilteredTickets = useMemo(() => { if (!dateRange || !dateRange.start || !dateRange.end) return tickets; return tickets.filter(t => { const d = new Date(t.dateStart || t.dateEnd || t.createdAt || new Date()); return d.getTime() >= dateRange.start.getTime() && d.getTime() <= dateRange.end.getTime(); }); }, [tickets, dateRange]);
+    const dateFilteredTickets = useMemo(() => { if (!dateRange || !dateRange.start || !dateRange.end) return tickets; return tickets.filter(t => { const d = new Date(t.dateStart || t.dateEnd || new Date()); return d.getTime() >= dateRange.start.getTime() && d.getTime() <= dateRange.end.getTime(); }); }, [tickets, dateRange]);
 
     const stats = useMemo(() => {
         return {

@@ -66,8 +66,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const login = async (username: string, password: string, remember: boolean): Promise<{success: boolean, message?: string}> => {
         setIsLoading(true);
         try {
-            // In development, the proxy or full URL might be needed. 
-            // Assuming the React app is served by the same server or proxied.
             const response = await fetch('/api/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -75,12 +73,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             });
 
             if (response.ok) {
-                const authenticatedUser: User = await response.json();
+                const data = await response.json();
+                const authenticatedUser: User = data.user;
+                const token = data.token;
+                
                 setUser(authenticatedUser);
                 if (remember) {
                     localStorage.setItem('danalog_user', JSON.stringify(authenticatedUser));
+                    localStorage.setItem('danalog_token', token);
                 } else {
                     sessionStorage.setItem('danalog_user', JSON.stringify(authenticatedUser));
+                    sessionStorage.setItem('danalog_token', token);
                 }
                 return { success: true };
             } else {
@@ -99,6 +102,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(null);
         localStorage.removeItem('danalog_user');
         sessionStorage.removeItem('danalog_user');
+        localStorage.removeItem('danalog_token');
+        sessionStorage.removeItem('danalog_token');
     };
 
     const refreshUser = async () => {

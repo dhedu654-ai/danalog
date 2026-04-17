@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Eye } from 'lucide-react';
 import { format, addDays, startOfWeek, endOfWeek, isSameDay, isSameMonth, addMonths, subMonths, addWeeks, subWeeks, isValid } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -14,27 +14,29 @@ export const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({ tickets, onT
     const [view, setView] = useState<'day' | 'week' | 'month' | 'all'>('day');
     const [currentDate, setCurrentDate] = useState(new Date());
 
-    React.useEffect(() => {
+    useEffect(() => {
         if (!onDateRangeChange) return;
-        let start: Date | null = null;
-        let end: Date | null = null;
         if (view === 'day') {
-            start = new Date(currentDate);
+            const start = new Date(currentDate);
             start.setHours(0,0,0,0);
-            end = new Date(currentDate);
+            const end = new Date(currentDate);
             end.setHours(23,59,59,999);
+            onDateRangeChange(start, end);
         } else if (view === 'week') {
-            start = startOfWeek(currentDate, { weekStartsOn: 1 });
+            const start = startOfWeek(currentDate, { weekStartsOn: 1 });
             start.setHours(0,0,0,0);
-            end = endOfWeek(currentDate, { weekStartsOn: 1 });
+            const end = endOfWeek(currentDate, { weekStartsOn: 1 });
             end.setHours(23,59,59,999);
+            onDateRangeChange(start, end);
         } else if (view === 'month') {
-            start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+            const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
             start.setHours(0,0,0,0);
-            end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0); 
+            const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0); 
             end.setHours(23,59,59,999);
+            onDateRangeChange(start, end);
+        } else {
+            onDateRangeChange(null, null);
         }
-        onDateRangeChange(start, end);
     }, [view, currentDate, onDateRangeChange]);
 
     // Navigation

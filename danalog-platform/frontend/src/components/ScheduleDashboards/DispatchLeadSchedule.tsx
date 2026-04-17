@@ -44,7 +44,7 @@ export const DispatchLeadSchedule: React.FC<Props> = ({ tickets, users, currentU
 
     const stats = useMemo(() => {
         let baseTickets = tickets;
-        if (dateRange && dateRange.start && dateRange.end) { baseTickets = baseTickets.filter(t => { const d = new Date(t.dateStart || t.dateEnd || t.createdAt || new Date()); return d.getTime() >= dateRange.start.getTime() && d.getTime() <= dateRange.end.getTime(); }); }
+        if (dateRange && dateRange.start && dateRange.end) { baseTickets = baseTickets.filter(t => { const d = new Date(t.dateStart || t.dateEnd || new Date()); return d.getTime() >= dateRange.start.getTime() && d.getTime() <= dateRange.end.getTime(); }); }
         if (employeeFilter !== 'ALL') {
             baseTickets = baseTickets.filter(t => t.dispatcherUsername === employeeFilter);
         }
@@ -60,7 +60,7 @@ export const DispatchLeadSchedule: React.FC<Props> = ({ tickets, users, currentU
 
     const filteredTickets = useMemo(() => {
         let result = tickets;
-        if (dateRange && dateRange.start && dateRange.end) { result = result.filter(t => { const d = new Date(t.dateStart || t.dateEnd || t.createdAt || new Date()); return d.getTime() >= dateRange.start.getTime() && d.getTime() <= dateRange.end.getTime(); }); }
+        if (dateRange && dateRange.start && dateRange.end) { result = result.filter(t => { const d = new Date(t.dateStart || t.dateEnd || new Date()); return d.getTime() >= dateRange.start.getTime() && d.getTime() <= dateRange.end.getTime(); }); }
         if (employeeFilter !== 'ALL') {
             result = result.filter(t => t.dispatcherUsername === employeeFilter);
         }
@@ -99,6 +99,12 @@ export const DispatchLeadSchedule: React.FC<Props> = ({ tickets, users, currentU
 
         return { availableDrivers: available, driverTrips: tripCounts };
     }, [tickets, users]);
+
+    const overriddenTickets = useMemo(() => {
+        let result = tickets;
+        if (dateRange && dateRange.start && dateRange.end) { result = result.filter(t => { const d = new Date(t.dateStart || t.dateEnd || new Date()); return d.getTime() >= dateRange.start.getTime() && d.getTime() <= dateRange.end.getTime(); }); }
+        return result.filter(t => t.assignType === 'override');
+    }, [tickets, dateRange]);
 
     return (
         <div className="space-y-6 max-w-[1600px] mx-auto pb-10">
@@ -208,6 +214,35 @@ export const DispatchLeadSchedule: React.FC<Props> = ({ tickets, users, currentU
                                     </div>
                                 );
                             })}
+                        </div>
+                    </div>
+
+                    {/* Overridden Tickets */}
+                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                        <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">⚠️ Lệnh giao ép (Override)
+                            {overriddenTickets.length > 0 && (
+                                <span className="bg-red-100 text-red-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{overriddenTickets.length}</span>
+                            )}
+                        </h3>
+                        <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+                            {overriddenTickets.length === 0 ? (
+                                <div className="text-sm text-center text-slate-500 py-4 italic">Không có lệnh ép.</div>
+                            ) : overriddenTickets.map(t => (
+                                <div key={t.id} onClick={() => setSelectedTicket(t)} className="p-3 border border-red-100 bg-red-50/30 rounded-lg hover:bg-red-50/50 cursor-pointer transition-colors">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div>
+                                            <div className="text-xs font-bold text-slate-800">{t.id}</div>
+                                            <div className="text-[10px] text-slate-500">{t.dispatcherUsername || 'UNKNOWN'} ép giao</div>
+                                        </div>
+                                    </div>
+                                    <div className="text-[10px] text-slate-600 mb-1">
+                                        <span className="font-semibold text-slate-700">Lái xe:</span> {t.driverName}
+                                    </div>
+                                    <div className="text-[10px] text-red-600 bg-white border border-red-100 rounded p-1.5">
+                                        <span className="font-semibold">Lý do:</span> {t.overrideReasonCode || 'Mặc định (Dời lịch/vắng)'}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>

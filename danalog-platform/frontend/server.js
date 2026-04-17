@@ -4,15 +4,47 @@ import bodyParser from 'body-parser';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'danalog_super_secret_key_123_!@#';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3002;
 const DB_FILE = path.join(__dirname, 'db.json');
 
+app.use(helmet({ contentSecurityPolicy: false })); // Allow React to load
 app.use(cors());
-app.use(bodyParser.json({ limit: '100mb' }));
-app.use(bodyParser.urlencoded({ limit: '100mb', extended: true }));
+app.use(bodyParser.json({ limit: '5mb' }));
+app.use(bodyParser.urlencoded({ limit: '5mb', extended: true }));
+
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    message: { error: 'Quá nhiều lần đăng nhập, vui lòng thử lại sau 15 phút' }
+});
+
+const authenticateJWT = (req, res, next) => {
+    if (req.path === '/login' || !req.path.startsWith('/')) { // since it's mounted on /api, req.path is relative to /api if we use app.use('/api', ...)
+        return next();
+    }
+    const authHeader = req.headers.authorization;
+    if (authHeader) {
+        const token = authHeader.split(' ')[1];
+        jwt.verify(token, JWT_SECRET, (err, user) => {
+            if (err) return res.status(403).json({ error: 'Phiên đăng nhập hết hạn hoặc không hợp lệ' });
+            req.user = user;
+            next();
+        });
+    } else {
+        res.status(401).json({ error: 'Yêu cầu truy cập bị từ chối' });
+    }
+};
+
+app.use('/api', authenticateJWT);
 
 // Serve static files from the React build
 app.use(express.static(path.join(__dirname, 'dist')));
@@ -1260,6 +1292,14 @@ function readDb() {
         let changed = false;
 
         if (db.users === undefined) { db.users = DEFAULT_USERS; changed = true; }
+        
+        // HASH ALL PASSWORDS
+        db.users.forEach(u => {
+            if (u.password && !u.password.startsWith('$2a$') && !u.password.startsWith('$2b$')) {
+                u.password = bcrypt.hashSync(u.password, 10);
+                changed = true;
+            }
+        });
         if (db.routeConfigs === undefined) { db.routeConfigs = DEFAULT_ROUTES; changed = true; }
         if (db.tickets === undefined) { db.tickets = []; changed = true; }
         if (db.publishedSalaries === undefined) { db.publishedSalaries = []; changed = true; }
@@ -2251,6 +2291,9 @@ app.post('/api/users', (req, res) => {
     newUser.status = newUser.status || 'ACTIVE';
     newUser.joinedAt = new Date().toISOString();
 
+    // HASH PASSWORD
+    newUser.password = bcrypt.hashSync(newUser.password, 10);
+
     db.users = [...users, newUser];
     writeDb(db);
 
@@ -2285,9 +2328,11 @@ app.put('/api/users/:username', (req, res) => {
         status: updates.status || existingUser.status
     };
 
-    // Ensure password isn't wiped if empty
+    // Ensure password isn't wiped if empty, and hash it if it's new
     if (!updates.password || updates.password.trim() === '') {
         updatedUser.password = existingUser.password;
+    } else if (updates.password !== existingUser.password) {
+        updatedUser.password = bcrypt.hashSync(updates.password, 10);
     }
 
     // Explicitly handle vehicleCapacity to be sure
@@ -2375,11 +2420,12 @@ app.put('/api/profile/password', (req, res) => {
         return res.status(404).json({ error: 'User not found' });
     }
     
-    if (db.users[index].password !== oldPassword) {
+    const user = db.users[index];
+    if (!bcrypt.compareSync(oldPassword, user.password || '')) {
         return res.status(400).json({ error: 'Mật khẩu cũ không chính xác' });
     }
     
-    db.users[index].password = newPassword;
+    db.users[index].password = bcrypt.hashSync(newPassword, 10);
     writeDb(db);
     res.json({ message: 'Đổi mật khẩu thành công' });
 });
@@ -3656,7 +3702,7 @@ app.post('/api/fuel-tickets', (req, res) => {
 });
 
 // --- AUTH ---
-app.post('/api/login', (req, res) => {
+app.post('/api/login', loginLimiter, (req, res) => {
     try {
         const { username, password } = req.body;
         console.log(`Login attempt for user: ${username}`);
@@ -3664,8 +3710,8 @@ app.post('/api/login', (req, res) => {
         const db = readDb();
         const users = db.users || [];
 
-        const user = users.find(u => u.username === username && u.password === password);
-        if (user) {
+        const user = users.find(u => u.username === username);
+        if (user && bcrypt.compareSync(password, user.password || '')) {
             if (user.status === 'INACTIVE') {
                 console.warn(`Login failed: Inactive account ${username}`);
                 return res.status(403).json({ error: 'Tài khoản đã bị vô hiệu hóa' });
@@ -3674,14 +3720,18 @@ app.post('/api/login', (req, res) => {
             console.log(`Login success: ${username}`);
             // Don't send password back
             const { password: p, ...userWithoutPassword } = user;
-            res.json(userWithoutPassword);
+            
+            // Generate token
+            const token = jwt.sign({ username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
+
+            res.json({ user: userWithoutPassword, token });
         } else {
             console.warn(`Login failed: Invalid credentials for ${username}`);
-            res.status(401).json({ error: 'Invalid username or password' });
+            res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không đúng' });
         }
     } catch (err) {
         console.error("Login server error:", err);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: 'Lỗi máy chủ' });
     }
 });
 

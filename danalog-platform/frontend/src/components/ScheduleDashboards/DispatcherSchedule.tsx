@@ -18,7 +18,7 @@ export const DispatcherSchedule: React.FC<Props> = ({ tickets, users, currentUse
 
     const stats = useMemo(() => {
         let baseTickets = tickets;
-        if (dateRange && dateRange.start && dateRange.end) { baseTickets = baseTickets.filter(t => { const d = new Date(t.dateStart || t.dateEnd || t.createdAt || new Date()); return d.getTime() >= dateRange.start.getTime() && d.getTime() <= dateRange.end.getTime(); }); }
+        if (dateRange && dateRange.start && dateRange.end) { baseTickets = baseTickets.filter(t => { const d = new Date(t.dateStart || t.dateEnd || new Date()); return d.getTime() >= dateRange.start.getTime() && d.getTime() <= dateRange.end.getTime(); }); }
         
         return {
             total: baseTickets.length,
@@ -32,7 +32,7 @@ export const DispatcherSchedule: React.FC<Props> = ({ tickets, users, currentUse
 
     const filteredTickets = useMemo(() => {
         let result = tickets;
-        if (dateRange && dateRange.start && dateRange.end) { result = result.filter(t => { const d = new Date(t.dateStart || t.dateEnd || t.createdAt || new Date()); return d.getTime() >= dateRange.start.getTime() && d.getTime() <= dateRange.end.getTime(); }); }
+        if (dateRange && dateRange.start && dateRange.end) { result = result.filter(t => { const d = new Date(t.dateStart || t.dateEnd || new Date()); return d.getTime() >= dateRange.start.getTime() && d.getTime() <= dateRange.end.getTime(); }); }
         
         if (statusFilter === 'MY_ASSIGNED') {
             return result.filter(t => t.dispatcherUsername === currentUser.username && (t.dispatchStatus === 'ASSIGNED' || t.dispatchStatus === 'DRIVER_ASSIGNED' || t.dispatchStatus === 'IN_PROGRESS' || t.dispatchStatus === 'COMPLETED' || t.dispatchStatus === 'DRIVER_PENDING'));

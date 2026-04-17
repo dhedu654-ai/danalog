@@ -43,7 +43,7 @@ export const CSStaffSchedule: React.FC<Props> = ({ tickets, currentUser }) => {
         let result = baseMyTickets;
         if (dateRange && dateRange.start && dateRange.end) {
             result = result.filter(t => {
-                const d = new Date(t.dateStart || t.dateEnd || t.createdAt || new Date());
+                const d = new Date(t.dateStart || t.dateEnd || new Date());
                 return d.getTime() >= dateRange.start.getTime() && d.getTime() <= dateRange.end.getTime();
             });
         }

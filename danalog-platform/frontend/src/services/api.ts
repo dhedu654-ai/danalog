@@ -4,6 +4,15 @@ import { supabase } from './supabaseClient';
 
 const API_URL = '/api'; // fallback for serverless functions
 
+const fetchWithToken = async (url: string, options: any = {}) => {
+    const token = localStorage.getItem('danalog_token') || sessionStorage.getItem('danalog_token');
+    const headers = { ...options.headers };
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+    return fetch(url, { ...options, headers });
+};
+
 function sanitizeTicketForDb(ticket: any) {
     let history = ticket.statusHistory;
     if (typeof history === 'string') {
@@ -77,7 +86,7 @@ export const api = {
         return data.map(d => ({...d, containers: typeof d.containers === 'string' ? JSON.parse(d.containers) : d.containers}));
     },
     // Keep createOrder logic hitting our Vercel backend so it handles ticket creation securely
-    createOrder: (order: any) => fetch(`${API_URL}/orders`, {
+    createOrder: (order: any) => fetchWithToken(`${API_URL}/orders`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(order)
     }).then(r => r.json()),
     
@@ -210,18 +219,37 @@ export const api = {
     updateUser: async (username: string, updates: any) => {
         const payload = { ...updates };
         if (payload.password === '') {
-            delete payload.password; // Do not clear password if empty string provided
+            delete payload.password;
         }
+        
+        // Sync with secure backend
+        const r = await fetchWithToken(`${API_URL}/users/${username}`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updates)
+        });
+        if (!r.ok) { const err = await r.json().catch(()=>({})); throw new Error(err.error || 'Failed to update user safely'); }
+        
+        if (payload.password || payload.password === '') delete payload.password; // Do not store plain text password in Supabase public profile!
         const { data, error } = await supabase.from('Users').update(payload).eq('username', username).select();
         if(error) throw new Error(error.message);
         return data?.[0];
     },
     createUser: async (userData: any) => {
-        const { data, error } = await supabase.from('Users').insert([userData]).select();
+        // Create in safe backend first
+        const r = await fetchWithToken(`${API_URL}/users`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(userData)
+        });
+        if (!r.ok) { const err = await r.json().catch(()=>({})); throw new Error(err.error || 'Failed to create user safely'); }
+        
+        const payload = { ...userData };
+        delete payload.password; // Never store plain text in Supabase
+        const { data, error } = await supabase.from('Users').insert([payload]).select();
         if(error) throw new Error(error.message);
         return data?.[0];
     },
     deleteUser: async (username: string) => {
+        const r = await fetchWithToken(`${API_URL}/users/${username}`, { method: 'DELETE' });
+        if (!r.ok) { const err = await r.json().catch(()=>({})); throw new Error(err.error || 'Failed to delete user securely'); }
+
         const { error } = await supabase.from('Users').delete().eq('username', username);
         if(error) throw new Error(error.message);
         return { success: true };
@@ -240,12 +268,12 @@ export const api = {
     },
 
     // VERCEL SERVERLESS APIS (Keep fetching for complex logics)
-    dispatchSuggest: (ticketId: string) => fetch(`${API_URL}/dispatch/suggest`, {
+    dispatchSuggest: (ticketId: string) => fetchWithToken(`${API_URL}/dispatch/suggest`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ticketId })
     }).then(r => r.json()),
 
     dispatchAssign: async (ticketId: string, driverId: string, assignType: string = 'manual', reason?: string, dispatcherUsername?: string, version?: number) => {
-        const r = await fetch(`${API_URL}/dispatch/assign`, {
+        const r = await fetchWithToken(`${API_URL}/dispatch/assign`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ticketId, driverId, assignType, reason, dispatcherUsername, version })
         });
@@ -267,12 +295,12 @@ export const api = {
         return data;
     },
 
-    dispatchAutoAssign: (ticketId: string, dispatcherUsername?: string) => fetch(`${API_URL}/dispatch/auto-assign`, {
+    dispatchAutoAssign: (ticketId: string, dispatcherUsername?: string) => fetchWithToken(`${API_URL}/dispatch/auto-assign`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ticketId, dispatcherUsername })
     }).then(r => r.json()),
 
     respondToDispatch: async (ticketId: string, response: string, rejectReasonCode?: string, reason?: string, driverUsername?: string) => {
-        const r = await fetch(`${API_URL}/dispatch/driver-response`, {
+        const r = await fetchWithToken(`${API_URL}/dispatch/driver-response`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ticketId, response, rejectReasonCode, reason, driverUsername })
         });
@@ -293,7 +321,7 @@ export const api = {
         return data;
     },
 
-    getDashboardStats: () => fetch(`${API_URL}/dashboard/stats`).then(r => r.json()),
+    getDashboardStats: () => fetchWithToken(`${API_URL}/dashboard/stats`).then(r => r.json()),
     
     getDispatchLogs: async () => {
         const { data, error } = await supabase.from('DispatchLogs').select('*');
@@ -399,7 +427,7 @@ export const api = {
         return data;
     },
     requestTicketCorrection: async (id: string, requestData: any) => {
-        const r = await fetch(`${API_URL}/ticket-correction-request?id=${id}`, {
+        const r = await fetchWithToken(`${API_URL}/ticket-correction-request?id=${id}`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestData)
         });
         const data = await r.json();
@@ -407,7 +435,7 @@ export const api = {
         return data;
     },
     reviewTicketCorrection: async (id: string, reviewData: any) => {
-        const r = await fetch(`${API_URL}/ticket-correction-review?id=${id}`, {
+        const r = await fetchWithToken(`${API_URL}/ticket-correction-review?id=${id}`, {
             method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reviewData)
         });
         const data = await r.json();
@@ -539,16 +567,10 @@ export const api = {
         return request;
     },
     changePassword: async (request: any) => {
-        // Verify old password
-        const { data: users, error: selErr } = await supabase.from('Users')
-            .select('*').eq('username', request.username).eq('password', request.oldPassword);
-        if (selErr) throw new Error(selErr.message);
-        if (!users || users.length === 0) throw new Error('Mật khẩu cũ không chính xác');
-        
-        // Update to new password
-        const { error: updErr } = await supabase.from('Users')
-            .update({ password: request.newPassword }).eq('username', request.username);
-        if (updErr) throw new Error(updErr.message);
+        const r = await fetchWithToken(`${API_URL}/profile/password`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(request)
+        });
+        if (!r.ok) { const err = await r.json().catch(()=>({})); throw new Error(err.error || 'Đổi mật khẩu thất bại'); }
         return { success: true };
     },
     updateProfileRequestStatus: async (requestId: string, status: string, approverUsername: string, notes?: string) => {
@@ -570,7 +592,7 @@ export const api = {
         return data?.[0];
     },
     dispatchOverride: async (ticketId: string, driverId: string, reasonCode: string, note?: string, dispatcherUsername?: string, version?: number) => {
-        const r = await fetch(`${API_URL}/dispatch/assign`, {
+        const r = await fetchWithToken(`${API_URL}/dispatch/assign`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ticketId, driverId, assignType: 'override', reason: note || reasonCode, dispatcherUsername, version })
         });
