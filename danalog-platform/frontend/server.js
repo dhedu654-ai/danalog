@@ -2872,14 +2872,7 @@ app.post('/api/dispatch/suggest', (req, res) => {
             db.tickets[idx].dispatchStatus = candidates.length > 0 ? 'RECOMMENDED' : 'NO_CANDIDATE';
             db.tickets[idx].pickupAreaCode = resolveAreaCode(ticket.route || '');
             
-            // Set SLA deadline if not already set
-            if (!db.tickets[idx].dispatchSLADeadline) {
-                const slaConfig = db.sla_config || DEFAULT_SLA_CONFIG;
-                const slaMinutes = priority.level === 'Critical' || priority.level === 'High' 
-                    ? slaConfig.priorityAssignTime 
-                    : slaConfig.standardAssignTime;
-                db.tickets[idx].dispatchSLADeadline = new Date(Date.now() + slaMinutes * 60000).toISOString();
-            }
+            // SLA deadline removed — using driver response timeout only
             
             // Initialize version if not set
             if (!db.tickets[idx].version) db.tickets[idx].version = 1;
@@ -3468,108 +3461,8 @@ app.get('/api/dashboard/stats', (req, res) => {
     }
 });
 // ============================================================
-// === SLA & DISPATCH TIMER ENGINES (Sprint 3) ===
+// === DISPATCH TIMER ENGINE ===
 // ============================================================
-
-// --- SLA BREACH AUTO-ASSIGN TIMER ---
-// Runs every 60 seconds: finds tickets past SLA deadline without driver
-function runSLABreachCheck() {
-    try {
-        const db = readDb();
-        const now = new Date();
-        const slaConfig = db.sla_config || DEFAULT_SLA_CONFIG;
-        let changed = false;
-
-        const unassignedTickets = (db.tickets || []).filter(t =>
-            !t.assignedDriverId &&
-            t.dispatchSLADeadline &&
-            ['APPROVED', 'PENDING', 'CHỜ ĐIỀU XE', 'MỚI TẠO', 'WAITING_DISPATCH', 'RECOMMENDED', 'NO_CANDIDATE'].includes(t.status || t.dispatchStatus || '')
-        );
-
-        for (const ticket of unassignedTickets) {
-            const deadline = new Date(ticket.dispatchSLADeadline);
-            if (now > deadline) {
-                // SLA breached — attempt auto-assign
-                const { candidates } = recommendationEngine(ticket, db);
-
-                if (candidates.length > 0) {
-                    const top = candidates[0];
-                    const ticketIdx = db.tickets.findIndex(t => t.id === ticket.id);
-                    if (ticketIdx === -1) continue;
-
-                    const cycleNo = (ticket.currentCycleNo || 0) + 1;
-                    const cycleId = `AC-${ticket.id}-${cycleNo}`;
-
-                    db.tickets[ticketIdx] = {
-                        ...ticket,
-                        assignedDriverName: top.driverName,
-                        assignedDriverId: top.driverId,
-                        driverName: top.driverName,
-                        licensePlate: top.licensePlate,
-                        dispatchStatus: 'DRIVER_PENDING',
-                        assignType: 'auto',
-                        assignedAt: now.toISOString(),
-                        status: 'ĐÃ ĐIỀU XE',
-                        currentAssignmentCycleId: cycleId,
-                        currentCycleNo: cycleNo,
-                        version: (ticket.version || 1) + 1
-                    };
-
-                    if (!db.dispatch_logs) db.dispatch_logs = [];
-                    db.dispatch_logs.unshift({
-                        id: 'DL-SLA-' + Date.now(),
-                        ticketId: ticket.id,
-                        ticketRoute: ticket.route || '',
-                        assignmentCycleId: cycleId,
-                        cycleNo,
-                        candidates,
-                        rejectedCandidates: [],
-                        assignedDriverId: top.driverId,
-                        assignedDriverName: top.driverName,
-                        assignType: 'auto',
-                        reason: `SLA breach auto-assign: Score ${top.score}/100`,
-                        timestamp: now.toISOString(),
-                        slaBreached: true
-                    });
-
-                    if (!db.driver_responses) db.driver_responses = [];
-                    db.driver_responses.unshift({
-                        id: 'DR-SLA-' + Date.now(),
-                        assignmentId: cycleId,
-                        ticketId: ticket.id,
-                        driverId: top.driverId,
-                        driverName: top.driverName,
-                        licensePlate: top.licensePlate,
-                        response: 'PENDING',
-                        sentAt: now.toISOString(),
-                        route: ticket.route || ''
-                    });
-
-                    notify(db, 'DISPATCHER', `⏰ SLA vượt hạn — Auto-assign Lệnh ${ticket.id} → ${top.driverName}`, 'WARNING', ticket.id);
-                    notify(db, top.driverId, `[Auto-SLA] Bạn được phân công lệnh: ${ticket.id}`, 'INFO', ticket.id);
-                    changed = true;
-
-                    console.log(`[SLA-Engine] Auto-assigned ${ticket.id} → ${top.driverName} (SLA breach)`);
-                } else {
-                    // No candidates — escalate
-                    const ticketIdx = db.tickets.findIndex(t => t.id === ticket.id);
-                    if (ticketIdx !== -1 && ticket.dispatchStatus !== 'ESCALATED') {
-                        db.tickets[ticketIdx].dispatchStatus = 'ESCALATED';
-                        db.tickets[ticketIdx].version = (ticket.version || 1) + 1;
-                        notify(db, 'DV_LEAD', `⚠️ Lệnh ${ticket.id} ESCALATED: SLA vượt hạn, không có ứng viên.`, 'ERROR', ticket.id);
-                        notify(db, 'DISPATCHER', `⚠️ Lệnh ${ticket.id} ESCALATED (SLA + no candidate).`, 'ERROR', ticket.id);
-                        changed = true;
-                        console.log(`[SLA-Engine] Escalated ${ticket.id} (no candidates, SLA breached)`);
-                    }
-                }
-            }
-        }
-
-        if (changed) writeDb(db);
-    } catch (err) {
-        console.error('[SLA-Engine] Error:', err);
-    }
-}
 
 // --- DRIVER NO_RESPONSE TIMEOUT ---
 // Runs every 30 seconds: finds PENDING responses past driverResponseTime
@@ -3577,9 +3470,9 @@ function runDriverResponseTimeout() {
     try {
         const db = readDb();
         const now = new Date();
-        const slaConfig = db.sla_config || DEFAULT_SLA_CONFIG;
-        const responseTimeout = (slaConfig.driverResponseTime || 3) * 60000; // ms
-        const maxCycles = slaConfig.maxAssignmentCycles || 3;
+        const dispatchConfig = db.sla_config || DEFAULT_SLA_CONFIG;
+        const responseTimeout = (dispatchConfig.driverResponseTime || 3) * 60000; // ms
+        const maxCycles = dispatchConfig.maxAssignmentCycles || 3;
         let changed = false;
 
         const pendingResponses = (db.driver_responses || []).filter(r => r.response === 'PENDING');
@@ -3634,14 +3527,13 @@ function runDriverResponseTimeout() {
     }
 }
 
-// Start timer engines
-setInterval(runSLABreachCheck, 60 * 1000);       // Every 60 seconds
+// Start driver response timeout timer only
 setInterval(runDriverResponseTimeout, 30 * 1000); // Every 30 seconds
 
 // Run once on startup
-setTimeout(() => { runSLABreachCheck(); runDriverResponseTimeout(); }, 5000);
+setTimeout(() => { runDriverResponseTimeout(); }, 5000);
 
-console.log('[Dispatch Engine] SLA breach check (60s) and Driver response timeout (30s) timers started.');
+console.log('[Dispatch Engine] Driver response timeout (30s) timer started.');
 
 // --- PROFILE REQUESTS ---
 app.get('/api/users/profile-requests', (req, res) => {
