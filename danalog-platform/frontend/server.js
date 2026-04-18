@@ -140,11 +140,11 @@ const DEFAULT_DISPATCH_CONFIG = {
     balance_weight: 10
 };
 
-// Default SLA configuration
+// Default dispatch configuration
 const DEFAULT_SLA_CONFIG = {
-    standardAssignTime: 15,   // minutes
-    priorityAssignTime: 5,    // minutes
-    driverResponseTime: 3,    // minutes
+    standardAssignTime: 15,   // minutes (legacy, not used)
+    priorityAssignTime: 5,    // minutes (legacy, not used)
+    driverResponseTime: 30,   // minutes — sau 30 phút không phản hồi thì tự đánh NO_RESPONSE
     maxAssignmentCycles: 3,   // escalate after N cycles
     enableReminders: true,
     enableDashboardAlert: true
