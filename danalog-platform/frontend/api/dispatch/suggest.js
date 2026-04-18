@@ -117,9 +117,14 @@ export default async function handler(req, res) {
             const pendingTickets = driverTickets.filter(t => pendingStatuses.includes(t.dispatchStatus || t.status));
             const pendingCount = pendingTickets.length;
             
-            const waitingLogs = (dispatchLogs || []).filter(l => 
-                l.assignedDriverId === d.username && l.responseStatus === 'WAITING'
-            );
+            const waitingLogs = (dispatchLogs || []).filter(l => {
+                if (l.assignedDriverId !== d.username || l.responseStatus !== 'WAITING') return false;
+                // Only count WAITING logs for tickets that are still actually pending
+                const relatedTicket = (allTickets || []).find(t => t.id === l.ticketId);
+                if (!relatedTicket) return false;
+                const stillPending = ['DRIVER_ASSIGNED', 'DRIVER_PENDING', 'ĐÃ ĐIỀU XE'].includes(relatedTicket.dispatchStatus || relatedTicket.status);
+                return stillPending;
+            });
 
             // Check if any waiting log is older than 30 minutes
             const isSlowResponse = waitingLogs.some(l => {

@@ -81,6 +81,7 @@ async function doAssign(req, res, ticket, driver, ticketId, assignType, reason, 
         licensePlate: driver.licensePlate || null,
         status: 'ĐÃ ĐIỀU XE',                    // Update main status!
         dispatchStatus: 'DRIVER_ASSIGNED',
+        dispatcherUsername: dispatcherUsername || 'system',
         statusHistory: newStatusHist,
         dispatchVersion: (ticket.dispatchVersion || 0) + 1,
         updatedAt: new Date().toISOString()

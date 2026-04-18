@@ -2926,6 +2926,7 @@ app.post('/api/dispatch/assign', (req, res) => {
             status: 'ĐÃ ĐIỀU XE',
             currentAssignmentCycleId: cycleId,
             currentCycleNo: cycleNo,
+            dispatcherUsername: dispatcherUsername || 'system',
             version: (ticket.version || 1) + 1
         };
         
@@ -3019,6 +3020,7 @@ app.post('/api/dispatch/override', (req, res) => {
             status: 'ĐÃ ĐIỀU XE',
             currentAssignmentCycleId: cycleId,
             currentCycleNo: cycleNo,
+            dispatcherUsername: dispatcherUsername || 'system',
             version: (ticket.version || 1) + 1
         };
         

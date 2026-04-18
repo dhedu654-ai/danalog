@@ -599,12 +599,15 @@ export function DispatchBoard({ tickets, currentUser, onRefreshTickets, focusedT
                                 <div className="px-5 py-4 border-t border-slate-100 space-y-2">
                                     <div className="flex gap-2">
                                         <button
-                                            onClick={() => candidates.length > 0 && handleAssign(candidates[0].driverId, 'ai_suggested')}
+                                            onClick={() => {
+                                                const target = selectedCandidate || candidates[0];
+                                                if (target) handleAssign(target.driverId, 'ai_suggested');
+                                            }}
                                             disabled={assigning || candidates.length === 0}
                                             className="flex-1 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg text-sm font-bold hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                                         >
                                             <CheckCircle size={16} />
-                                            {assigning ? 'Đang phân công...' : `Chọn ${candidates[0]?.driverName || ''}`}
+                                            {assigning ? 'Đang phân công...' : `Chọn ${(selectedCandidate || candidates[0])?.driverName || ''}`}
                                         </button>
                                         <button
                                             onClick={() => openOverrideModal(undefined, undefined)}
