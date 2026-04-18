@@ -146,8 +146,26 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
                 itemMap[key].total += (t.driverSalary || 0);
 
                 // 2. NIGHT STAY ADD-ON (if applicable)
-                const days = t.nightStayDays || 1;
-                if (t.nightStay && days > 0) {
+                // Auto-detect nightStay from route config if ticket doesn't have the flag
+                const routeConfig = routeConfigs.find(rc => rc.routeName === t.route);
+                const hasNightStay = t.nightStay || (routeConfig as any)?.isNightStay;
+                
+                // Calculate days: use ticket's nightStayDays, or compute from date range
+                let days = t.nightStayDays || 0;
+                if (hasNightStay && days <= 0) {
+                    // Auto-compute from dateStart/dateEnd
+                    if (t.dateStart && t.dateEnd) {
+                        const start = new Date(t.dateStart);
+                        const end = new Date(t.dateEnd);
+                        const diffMs = end.getTime() - start.getTime();
+                        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                        days = Math.max(diffDays, 1);
+                    } else {
+                        days = 1; // Fallback
+                    }
+                }
+                
+                if (hasNightStay && days > 0) {
                     // Check if this is NOT already a manual "Lưu đêm" route
                     if (!routeLower.includes("lưu đêm")) {
                         // FIX: Prioritize the salary saved on the ticket (Snapshot)
@@ -159,7 +177,6 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
 
                         if (!nightPrice) {
                             if (!location) {
-                                const routeConfig = routeConfigs.find(rc => rc.routeName === t.route);
                                 location = routeConfig?.nightStayLocation || 'OUTER_CITY';
                             }
 

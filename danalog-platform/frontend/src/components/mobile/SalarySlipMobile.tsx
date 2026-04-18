@@ -70,12 +70,28 @@ export const SalarySlipMobile: React.FC<SalarySlipMobileProps> = ({ tickets, not
             routeGrouping[routeName].count += (t.trips || 1);
             routeGrouping[routeName].total += (t.driverSalary || 0);
 
-            if (t.nightStay) {
+            // Auto-detect nightStay from route config
+            const routeConfig = routeConfigs.find(rc => rc.routeName === t.route);
+            const hasNightStay = t.nightStay || (routeConfig as any)?.isNightStay;
+            
+            if (hasNightStay) {
                 // FIX: Enhanced location detection to match DriverSalaryTable logic
                 let location = t.nightStayLocation;
                 if (!location) {
-                    const routeConfig = routeConfigs.find(rc => rc.routeName === t.route);
                     location = routeConfig?.nightStayLocation || 'OUTER_CITY';
+                }
+
+                // Calculate days: use ticket's nightStayDays, or compute from date range
+                let nightDays = t.nightStayDays || 0;
+                if (nightDays <= 0) {
+                    if (t.dateStart && t.dateEnd) {
+                        const start = new Date(t.dateStart);
+                        const end = new Date(t.dateEnd);
+                        const diffMs = end.getTime() - start.getTime();
+                        nightDays = Math.max(Math.ceil(diffMs / (1000 * 60 * 60 * 24)), 1);
+                    } else {
+                        nightDays = 1;
+                    }
                 }
 
                 // Find config for pricing
@@ -83,17 +99,17 @@ export const SalarySlipMobile: React.FC<SalarySlipMobileProps> = ({ tickets, not
                 // User requested absolute hardcoded values for Night Stay
                 const price = isInnerCity ? 90000 : 120000;
 
-                const dailyTotal = (t.nightStayDays || 1) * price;
+                const dailyTotal = nightDays * price;
                 totalOvernight += dailyTotal;
 
                 // FIX: Label logic must match the detected location
                 const label = isInnerCity ? 'Lưu đêm (Trong TP)' : 'Lưu đêm (Ngoài TP)';
                 const existing = overnightDetails.find(d => d.name === label);
                 if (existing) {
-                    existing.quantity += (t.nightStayDays || 1);
+                    existing.quantity += nightDays;
                     existing.total += dailyTotal;
                 } else {
-                    overnightDetails.push({ name: label, quantity: (t.nightStayDays || 1), price, total: dailyTotal });
+                    overnightDetails.push({ name: label, quantity: nightDays, price, total: dailyTotal });
                 }
             }
         });
