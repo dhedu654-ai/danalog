@@ -3464,15 +3464,16 @@ app.get('/api/dashboard/stats', (req, res) => {
 // === DISPATCH TIMER ENGINE ===
 // ============================================================
 
-// --- DRIVER NO_RESPONSE TIMEOUT ---
-// Runs every 30 seconds: finds PENDING responses past driverResponseTime
-function runDriverResponseTimeout() {
+// --- DRIVER RESPONSE TIMEOUT NOTIFICATION ---
+// Runs every 60 seconds: checks for PENDING responses past 30 minutes
+// Only sends notification to dispatcher — does NOT auto-reassign.
+// Dispatcher handles it via "Gán lại ngay" button on frontend (same as Vercel).
+function runDriverResponseNotification() {
     try {
         const db = readDb();
         const now = new Date();
         const dispatchConfig = db.sla_config || DEFAULT_SLA_CONFIG;
-        const responseTimeout = (dispatchConfig.driverResponseTime || 3) * 60000; // ms
-        const maxCycles = dispatchConfig.maxAssignmentCycles || 3;
+        const responseTimeout = (dispatchConfig.driverResponseTime || 30) * 60000; // 30 minutes
         let changed = false;
 
         const pendingResponses = (db.driver_responses || []).filter(r => r.response === 'PENDING');
@@ -3482,58 +3483,37 @@ function runDriverResponseTimeout() {
             const elapsed = now.getTime() - sentAt.getTime();
 
             if (elapsed > responseTimeout) {
-                // Mark as NO_RESPONSE
+                // Check if we already notified for this response (avoid spam)
+                if (resp.timeoutNotified) continue;
+
                 const respIdx = db.driver_responses.findIndex(r => r.id === resp.id);
                 if (respIdx === -1) continue;
 
-                db.driver_responses[respIdx].response = 'NO_RESPONSE';
-                db.driver_responses[respIdx].reason = 'Hết thời gian phản hồi';
-                db.driver_responses[respIdx].respondedAt = now.toISOString();
+                // Mark as notified (but keep PENDING — dispatcher will decide)
+                db.driver_responses[respIdx].timeoutNotified = true;
 
-                // Update ticket — re-queue or escalate
-                const ticketIdx = (db.tickets || []).findIndex(t => t.id === resp.ticketId);
-                if (ticketIdx !== -1) {
-                    const ticket = db.tickets[ticketIdx];
-                    const currentCycle = ticket.currentCycleNo || 1;
-
-                    if (currentCycle >= maxCycles) {
-                        // ESCALATED
-                        db.tickets[ticketIdx].dispatchStatus = 'ESCALATED';
-                        db.tickets[ticketIdx].status = 'CHỜ ĐIỀU XE';
-                        delete db.tickets[ticketIdx].assignedDriverId;
-                        delete db.tickets[ticketIdx].assignedDriverName;
-                        db.tickets[ticketIdx].version = (ticket.version || 1) + 1;
-                        notify(db, 'DV_LEAD', `⚠️ Lệnh ${resp.ticketId} ESCALATED: ${resp.driverName} không phản hồi (${currentCycle} cycle).`, 'ERROR', resp.ticketId);
-                        notify(db, 'DISPATCHER', `⚠️ Lệnh ${resp.ticketId} ESCALATED: vượt ${maxCycles} cycle.`, 'ERROR', resp.ticketId);
-                    } else {
-                        // Re-queue for next cycle
-                        db.tickets[ticketIdx].dispatchStatus = 'WAITING_DISPATCH';
-                        db.tickets[ticketIdx].status = 'CHỜ ĐIỀU XE';
-                        delete db.tickets[ticketIdx].assignedDriverId;
-                        delete db.tickets[ticketIdx].assignedDriverName;
-                        db.tickets[ticketIdx].version = (ticket.version || 1) + 1;
-                        notify(db, 'DISPATCHER', `⏰ Tài xế ${resp.driverName} KHÔNG PHẢN HỒI Lệnh ${resp.ticketId}. Tự động xếp lại hàng chờ (cycle ${currentCycle}/${maxCycles}).`, 'WARNING', resp.ticketId);
-                    }
-                }
+                // Notify dispatcher to take action via UI
+                const minutes = Math.round(elapsed / 60000);
+                notify(db, 'DISPATCHER', `⏰ Lái xe ${resp.driverName} chưa phản hồi Lệnh ${resp.ticketId} sau ${minutes} phút. Vui lòng kiểm tra và xử lý.`, 'WARNING', resp.ticketId);
 
                 changed = true;
-                console.log(`[NoResponse-Engine] ${resp.driverName} timed out on ${resp.ticketId}`);
+                console.log(`[Timeout-Alert] ${resp.driverName} chưa phản hồi ${resp.ticketId} (${minutes} phút)`);
             }
         }
 
         if (changed) writeDb(db);
     } catch (err) {
-        console.error('[NoResponse-Engine] Error:', err);
+        console.error('[Timeout-Alert] Error:', err);
     }
 }
 
-// Start driver response timeout timer only
-setInterval(runDriverResponseTimeout, 30 * 1000); // Every 30 seconds
+// Check every 60 seconds for overdue responses
+setInterval(runDriverResponseNotification, 60 * 1000);
 
-// Run once on startup
-setTimeout(() => { runDriverResponseTimeout(); }, 5000);
+// Run once on startup (after 5s delay)
+setTimeout(() => { runDriverResponseNotification(); }, 5000);
 
-console.log('[Dispatch Engine] Driver response timeout (30s) timer started.');
+console.log('[Dispatch Engine] Driver response notification (60s) timer started.');
 
 // --- PROFILE REQUESTS ---
 app.get('/api/users/profile-requests', (req, res) => {
