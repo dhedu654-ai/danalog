@@ -334,6 +334,17 @@ export const HomeMobile: React.FC<HomeMobileProps> = ({ tickets, routeConfigs, c
                                                     <div className="text-xs font-bold text-slate-700">{ticket.licensePlate || '-'}</div>
                                                 </div>
                                             </div>
+                                            {/* Driver salary info */}
+                                            {(ticket.driverSalary || ticket.driverPrice) && (
+                                                <div className="border-t border-amber-200/50 pt-2 mt-1">
+                                                    <div className="bg-emerald-50 rounded-lg px-3 py-2 flex items-center justify-between">
+                                                        <span className="text-[10px] text-emerald-600 uppercase font-bold tracking-wider">Lương chuyến này</span>
+                                                        <span className="text-sm font-black text-emerald-700">
+                                                            {(ticket.driverSalary || (ticket.driverPrice * (ticket.trips || 1))).toLocaleString('vi-VN')} đ
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </>
                                     )}
 
