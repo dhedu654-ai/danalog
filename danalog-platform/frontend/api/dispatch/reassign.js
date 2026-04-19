@@ -46,7 +46,7 @@ export default async function handler(req, res) {
         if (activeLog) {
             await supabase.from('DispatchLogs').update({
                 responseStatus: 'REJECTED',
-                reason: reason,
+                responseReason: reason,
                 respondedAt: new Date().toISOString()
             }).eq('id', activeLog.id);
         }
@@ -55,7 +55,7 @@ export default async function handler(req, res) {
         await supabase.from('DispatchLogs')
             .update({
                 responseStatus: 'REVOKED_SYSTEM',
-                reason: 'Hệ thống thu hồi do điều vận gán lại',
+                responseReason: 'Hệ thống thu hồi do điều vận gán lại',
                 respondedAt: new Date().toISOString()
             })
             .eq('ticketId', ticketId)

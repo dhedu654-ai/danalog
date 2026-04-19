@@ -879,11 +879,11 @@ export function DispatchBoard({ tickets, currentUser, onRefreshTickets, focusedT
                                                         }}
                                                         className={`px-3 py-1.5 rounded text-[10px] font-bold uppercase transition-colors ${
                                                             isSlow 
-                                                                ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse shadow-sm shadow-red-200' 
-                                                                : 'bg-blue-50 hover:bg-blue-500 text-blue-600 hover:text-white'
+                                                                ? 'bg-red-50 hover:bg-red-500 text-red-600 hover:text-white border border-red-200' 
+                                                                : 'bg-blue-50 hover:bg-blue-500 text-blue-600 hover:text-white border border-transparent'
                                                         }`}
                                                     >
-                                                        {isSlow ? `🚨 Gán lại ngay (${minutesWaiting}p)` : 'Gán lại'}
+                                                        {isSlow ? `Gán lại (${minutesWaiting}p)` : 'Gán lại'}
                                                     </button>
                                                 );
                                             })()}
