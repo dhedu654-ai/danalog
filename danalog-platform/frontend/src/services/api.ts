@@ -222,15 +222,14 @@ export const api = {
             delete payload.password;
         }
         
-        // Update via secure backend (which handles Supabase update)
-        const r = await fetchWithToken(`${API_URL}/users/${username}`, {
+        // Update via secure backend
+        const r = await fetchWithToken(`${API_URL}/users?username=${username}`, {
             method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
         });
         if (!r.ok) { const err = await r.json().catch(()=>({})); throw new Error(err.error || 'Failed to update user'); }
         return r.json();
     },
     createUser: async (userData: any) => {
-        // Create via secure backend (which handles Supabase insert)
         const r = await fetchWithToken(`${API_URL}/users`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(userData)
         });
@@ -238,7 +237,7 @@ export const api = {
         return r.json();
     },
     deleteUser: async (username: string) => {
-        const r = await fetchWithToken(`${API_URL}/users/${username}`, { method: 'DELETE' });
+        const r = await fetchWithToken(`${API_URL}/users?username=${username}`, { method: 'DELETE' });
         if (!r.ok) { const err = await r.json().catch(()=>({})); throw new Error(err.error || 'Failed to delete user securely'); }
 
         const { error } = await supabase.from('Users').delete().eq('username', username);
