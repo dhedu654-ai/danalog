@@ -18,4 +18,7 @@ export default defineConfig({
       '/api': 'http://127.0.0.1:3002',
     },
   },
+  build: {
+    chunkSizeWarningLimit: 3000,
+  },
 })
