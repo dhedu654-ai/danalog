@@ -71,37 +71,43 @@ export default async function handler(req, res) {
                         continuityType = 'EXACT';
                     } else if (areAreasNear(lastDropoff, pickupArea)) {
                         // NEAR: Within same region/zone
-                        continuityScore = 60;
+                        continuityScore = 70;
                         continuityType = 'NEAR';
                     } else {
-                        // WEAK: Different area but has recent history
-                        continuityScore = 20;
+                        // WEAK: Different area but has completed trips before
+                        continuityScore = 40;
                         continuityType = 'WEAK';
                     }
                 } else {
-                    // Has history but no area data — give partial credit
-                    continuityScore = 15;
+                    // Has history but no area data — give reasonable credit
+                    continuityScore = 35;
                     continuityType = 'WEAK';
                 }
 
-                // === TIME DECAY PENALTY ===
+                // === TIME DECAY PENALTY (softened) ===
                 const targetStartDate = targetTicket?.dateStart || new Date().toISOString();
                 if (lastTrip.dateEnd && targetStartDate) {
                     const lastEndDate = new Date(lastTrip.dateEnd);
                     const newStartDate = new Date(targetStartDate);
                     const diffHours = (newStartDate - lastEndDate) / (1000 * 60 * 60);
 
-                    if (diffHours > 24) {
-                        // Completely decayed (driver went home)
-                        continuityScore = 0;
-                        continuityType = 'NONE';
-                    } else if (diffHours > 6) {
-                        // Partial decay (driver has been waiting around)
-                        continuityScore = Math.floor(continuityScore * 0.5);
+                    if (diffHours > 48) {
+                        // Fully decayed after 2 days
+                        continuityScore = Math.max(Math.floor(continuityScore * 0.2), 10);
+                    } else if (diffHours > 24) {
+                        // Partial decay after 1 day
+                        continuityScore = Math.floor(continuityScore * 0.6);
+                    } else if (diffHours > 8) {
+                        // Minor decay after 8 hours
+                        continuityScore = Math.floor(continuityScore * 0.8);
                     }
+                    // Within 8 hours: no decay at all
                 }
+            } else {
+                // No completed trips at all — give small base so score isn't crushed
+                continuityScore = 15;
+                continuityType = 'NONE';
             }
-            // If no completed trips at all, continuityScore stays 0, continuityType stays 'NONE'
 
             // ═══════════════════════════════════════════════════
             // CRITERION 2: AVAILABILITY (Khả dụng) — Weight 0.25
@@ -137,11 +143,11 @@ export default async function handler(req, res) {
             let availabilityScore;
             let availabilityLabel;
             if (isTransporting) {
-                availabilityScore = 10;
+                availabilityScore = 20;
                 availabilityLabel = 'Đang vận chuyển';
             } else if (totalPending > 0) {
-                // Each pending assignment reduces score further
-                availabilityScore = Math.max(40 - ((totalPending - 1) * 15), 5);
+                // Start from 65, reduce by 10 per pending (still usable with 1-2 pending)
+                availabilityScore = Math.max(65 - ((totalPending - 1) * 10), 15);
                 availabilityLabel = `Chờ phản hồi (${totalPending} phiếu)`;
             } else {
                 availabilityScore = 100;
@@ -172,10 +178,11 @@ export default async function handler(req, res) {
             const totalAssignments = driverLogs.length || 1; // avoid div by 0
             const acceptanceRate = 1 - (rejectionCount / totalAssignments);
             
-            // Performance = base from completions + bonus from acceptance rate
-            const completionBase = Math.min((completedCount / 30) * 70, 70); // up to 70 points from completions
+            // Performance = base 40 (everyone starts decent) + completions + acceptance rate
+            const basePerformance = 40; // baseline so new drivers aren't penalized
+            const completionBonus = Math.min((completedCount / 10) * 30, 30); // max 30 pts, reached at 10 trips
             const acceptanceBonus = acceptanceRate * 30; // up to 30 points from acceptance rate
-            const performanceScore = Math.min(Math.round(completionBase + acceptanceBonus), 100);
+            const performanceScore = Math.min(Math.round(basePerformance + completionBonus + acceptanceBonus), 100);
 
             // ═══════════════════════════════════════════════════
             // CRITERION 5: LOAD BALANCE (Cân bằng tải) — Weight 0.10
