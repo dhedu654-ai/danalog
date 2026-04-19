@@ -129,25 +129,22 @@ export const HomeMobile: React.FC<HomeMobileProps> = ({ tickets, routeConfigs, c
         setRespondingTo(null);
     };
 
-    // A pending request is valid only if the ticket is still assigned to this driver
-    // The backend `getDriverResponses` handles returning PENDING for valid WAITING logs.
+    // Filter pending responses: only show PENDING (i.e. WAITING logs mapped to PENDING)
+    // that belong to this driver. After accept/reject the backend changes responseStatus
+    // so they will no longer be PENDING on next refresh.
     const pending = pendingResponses.filter(r => {
         if (r.response !== 'PENDING') return false;
-        const ticket = tickets.find(t => t.id === r.ticketId);
-        // Even if ticket data is slightly stale, we trust the PENDING log for this driver
-        if (ticket && ticket.driverUsername !== currentUser?.username && ticket.driverUsername !== null) {
-             // If ticket explicitly belongs to someone else now, hide it
-             // But if driverUsername is null (e.g. just reassigned to queue), wait for backend to revoke log
-        }
+        // Only show if this driver is the assigned driver in the log
+        if (r.driverId !== currentUser?.username) return false;
         return true;
     });
     
-    // Find active trip: Ticket assigned to user, not completed/cancelled, and MUST be accepted
+    // Find active trip: Ticket assigned to this user with an accepted/in-progress status
     const activeTrip = tickets.find(t => 
         t.driverUsername === currentUser?.username && 
         (
-            ['DRIVER_ACCEPTED', 'ACCEPTED', 'ON_THE_WAY', 'IN_PROGRESS', 'ARRIVED', 'ĐANG VẬN CHUYỂN'].includes(t.status || '') ||
-            ['DRIVER_ACCEPTED', 'ACCEPTED', 'ON_THE_WAY', 'IN_PROGRESS', 'ARRIVED', 'ĐANG VẬN CHUYỂN'].includes(t.dispatchStatus || '')
+            ['DRIVER_ACCEPTED', 'DRIVER_ASSIGNED', 'ACCEPTED', 'ON_THE_WAY', 'IN_PROGRESS', 'ARRIVED', 'ĐANG VẬN CHUYỂN', 'ĐÃ ĐIỀU XE'].includes(t.status || '') ||
+            ['DRIVER_ACCEPTED', 'DRIVER_ASSIGNED', 'ACCEPTED', 'ON_THE_WAY', 'IN_PROGRESS', 'ARRIVED', 'ĐANG VẬN CHUYỂN', 'ĐÃ ĐIỀU XE'].includes(t.dispatchStatus || '')
         )
     );
 

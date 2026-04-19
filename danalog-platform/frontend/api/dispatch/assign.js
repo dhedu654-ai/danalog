@@ -75,6 +75,7 @@ async function doAssign(req, res, ticket, driver, ticketId, assignType, reason, 
     if (typeof newStatusHist === 'string') {
         try { newStatusHist = JSON.parse(newStatusHist); } catch { newStatusHist = []; }
     }
+    if (!Array.isArray(newStatusHist)) newStatusHist = [];
     newStatusHist.push({
         status: 'ĐÃ ĐIỀU XE',
         action: assignType === 'auto' ? 'Tự động phân công xe' : 'Phân công xe',
