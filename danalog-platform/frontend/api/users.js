@@ -47,6 +47,7 @@ export default async function handler(req, res) {
             delete updates.id;
             delete updates.username;
             delete updates.created_at;
+            delete updates.status; // Column does not exist in DB
 
             const { data, error } = await supabase
                 .from('Users')

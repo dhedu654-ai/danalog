@@ -83,7 +83,6 @@ export default async function handler(req, res) {
             licensePlate: null,
             status: 'CHƯA ĐIỀU XE',
             dispatchStatus: 'WAITING_DISPATCH',
-            dispatcherUsername: null,
             statusHistory: newStatusHist,
             dispatchVersion: (ticket.dispatchVersion || 0) + 1,
             updatedAt: new Date().toISOString()

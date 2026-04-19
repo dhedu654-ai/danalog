@@ -57,8 +57,9 @@ export const HomeMobile: React.FC<HomeMobileProps> = ({ tickets, routeConfigs, c
             await api.respondToDispatch(ticketId, 'ACCEPT', undefined, undefined, currentUser?.username);
             await loadResponses();
             onRefresh();
-        } catch (err) {
+        } catch (err: any) {
             console.error('Accept failed:', err);
+            alert('Lỗi nhận lệnh: ' + err.message);
         }
         setRespondingTo(null);
     };
@@ -71,8 +72,9 @@ export const HomeMobile: React.FC<HomeMobileProps> = ({ tickets, routeConfigs, c
             setRejectReason('');
             await loadResponses();
             onRefresh();
-        } catch (err) {
+        } catch (err: any) {
             console.error('Reject failed:', err);
+            alert('Lỗi từ chối lệnh: ' + err.message);
         }
         setRespondingTo(null);
     };

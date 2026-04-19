@@ -252,7 +252,9 @@ export const api = {
         return data;
     },
     createCustomer: async (customer: any) => {
-         const { data, error } = await supabase.from('Customers').insert([customer]).select();
+         const payload = { ...customer };
+         if (!payload.id) delete payload.id;
+         const { data, error } = await supabase.from('Customers').insert([payload]).select();
          if(error) throw new Error(error.message);
          return data?.[0];
     },
@@ -304,6 +306,10 @@ export const api = {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ticketId, response, rejectReasonCode, reason, driverUsername })
         });
+        if (!r.ok) {
+            const err = await r.json().catch(()=>({}));
+            throw new Error(err.error || 'Failed to respond to dispatch');
+        }
         const data = await r.json();
         
         if (driverUsername && response !== 'PENDING') {
