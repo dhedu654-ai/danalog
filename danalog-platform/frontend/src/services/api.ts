@@ -222,29 +222,20 @@ export const api = {
             delete payload.password;
         }
         
-        // Sync with secure backend
+        // Update via secure backend (which handles Supabase update)
         const r = await fetchWithToken(`${API_URL}/users/${username}`, {
-            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updates)
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
         });
-        if (!r.ok) { const err = await r.json().catch(()=>({})); throw new Error(err.error || 'Failed to update user safely'); }
-        
-        if (payload.password || payload.password === '') delete payload.password; // Do not store plain text password in Supabase public profile!
-        const { data, error } = await supabase.from('Users').update(payload).eq('username', username).select();
-        if(error) throw new Error(error.message);
-        return data?.[0];
+        if (!r.ok) { const err = await r.json().catch(()=>({})); throw new Error(err.error || 'Failed to update user'); }
+        return r.json();
     },
     createUser: async (userData: any) => {
-        // Create in safe backend first
+        // Create via secure backend (which handles Supabase insert)
         const r = await fetchWithToken(`${API_URL}/users`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(userData)
         });
-        if (!r.ok) { const err = await r.json().catch(()=>({})); throw new Error(err.error || 'Failed to create user safely'); }
-        
-        const payload = { ...userData };
-        delete payload.password; // Never store plain text in Supabase
-        const { data, error } = await supabase.from('Users').insert([payload]).select();
-        if(error) throw new Error(error.message);
-        return data?.[0];
+        if (!r.ok) { const err = await r.json().catch(()=>({})); throw new Error(err.error || 'Failed to create user'); }
+        return r.json();
     },
     deleteUser: async (username: string) => {
         const r = await fetchWithToken(`${API_URL}/users/${username}`, { method: 'DELETE' });
@@ -265,6 +256,16 @@ export const api = {
          const { data, error } = await supabase.from('Customers').insert([customer]).select();
          if(error) throw new Error(error.message);
          return data?.[0];
+    },
+    updateCustomer: async (id: string, updates: any) => {
+        const { data, error } = await supabase.from('Customers').update(updates).eq('id', id).select();
+        if(error) throw new Error(error.message);
+        return data?.[0];
+    },
+    deleteCustomer: async (id: string) => {
+        const { error } = await supabase.from('Customers').delete().eq('id', id);
+        if(error) throw new Error(error.message);
+        return { success: true };
     },
 
     // VERCEL SERVERLESS APIS (Keep fetching for complex logics)
@@ -663,6 +664,20 @@ export const api = {
         const { data, error } = await supabase.from('FuelTickets').update(updates).eq('id', id).select();
         if (error) throw new Error(error.message);
         return data?.[0];
+    },
+
+    // ========== DISPATCH REASSIGN ==========
+    dispatchReassign: async (ticketId: string, dispatcherUsername?: string) => {
+        const r = await fetchWithToken(`${API_URL}/dispatch/reassign`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticketId, dispatcherUsername })
+        });
+        if (!r.ok) {
+            const err = await r.json().catch(() => ({}));
+            throw new Error(err.error || 'Reassign failed');
+        }
+        return r.json();
     },
 
 };

@@ -20,6 +20,7 @@ export const AdminSchedule: React.FC<Props> = ({ tickets, users, currentUser }) 
     const [dateRange, setDateRange] = useState<{start: Date, end: Date} | null>(null);
     const [statusFilter, setStatusFilter] = useState<string | null>(null);
     const [corrections, setCorrections] = useState<TicketCorrectionRequest[]>([]);
+    const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
 
     useEffect(() => {
         const fetchCorrections = async () => {
@@ -30,7 +31,17 @@ export const AdminSchedule: React.FC<Props> = ({ tickets, users, currentUser }) 
                 console.error("Failed to fetch corrections", e);
             }
         };
+        const fetchPendingApprovals = async () => {
+            try {
+                const data = await api.getProfileUpdateRequests();
+                const pending = (data || []).filter((r: any) => r.status === 'PENDING');
+                setPendingApprovalsCount(pending.length);
+            } catch (e) {
+                console.error("Failed to fetch profile approvals", e);
+            }
+        };
         fetchCorrections();
+        fetchPendingApprovals();
     }, []);
 
     const dateFilteredTickets = useMemo(() => { if (!dateRange || !dateRange.start || !dateRange.end) return tickets; return tickets.filter(t => { const d = new Date(t.dateStart || t.dateEnd || new Date()); return d.getTime() >= dateRange.start.getTime() && d.getTime() <= dateRange.end.getTime(); }); }, [tickets, dateRange]);
@@ -90,11 +101,23 @@ export const AdminSchedule: React.FC<Props> = ({ tickets, users, currentUser }) 
                                 <div className="text-xs text-slate-500">Có <span className="font-bold text-rose-600">{corrections.filter(c => c.status === 'PENDING').length}</span> yêu cầu đang chờ duyệt.</div>
                              </div>
                              <div 
-                                className="p-3 border border-slate-100 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
-                                onClick={() => navigate('/admin/users')}
+                                className="p-3 border border-slate-100 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer group"
+                                onClick={() => navigate('/admin/profile/approvals')}
                              >
-                                <div className="text-sm font-bold text-slate-800 mb-1">Yêu cầu duyệt hồ sơ</div>
-                                <div className="text-xs text-slate-500">Người dùng đăng ký/cập nhật hồ sơ cần admin duyệt.</div>
+                                <div className="flex justify-between items-center mb-1">
+                                    <div className="text-sm font-bold text-slate-800">Yêu cầu duyệt hồ sơ</div>
+                                    {pendingApprovalsCount > 0 && (
+                                        <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse min-w-[20px] text-center">
+                                            {pendingApprovalsCount}
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="text-xs text-slate-500">
+                                    {pendingApprovalsCount > 0 
+                                        ? <>Có <span className="font-bold text-rose-600">{pendingApprovalsCount}</span> hồ sơ đang chờ duyệt.</>
+                                        : 'Không có hồ sơ nào chờ duyệt.'
+                                    }
+                                </div>
                              </div>
                          </div>
                     </div>

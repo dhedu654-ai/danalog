@@ -10,6 +10,16 @@ export default async function handler(req, res) {
         const { data: ticket, error: ticErr } = await supabase.from('Tickets').select('*').eq('id', ticketId).single();
         if (ticErr || !ticket) return res.status(404).json({ error: 'Ticket not found' });
         
+        // GUARD: Prevent double-assignment — if ticket is already assigned to a driver, reject
+        const alreadyAssignedStatuses = ['DRIVER_ASSIGNED', 'DRIVER_ACCEPTED', 'IN_PROGRESS', 'ĐANG VẬN CHUYỂN'];
+        if (alreadyAssignedStatuses.includes(ticket.dispatchStatus)) {
+            return res.status(409).json({ 
+                error: 'CONFLICT: Phiếu này đã được gán cho lái xe khác rồi. Vui lòng refresh lại trang.', 
+                currentStatus: ticket.dispatchStatus,
+                currentDriver: ticket.driverName || ticket.driverUsername
+            });
+        }
+
         // Optimistic locking check
         if (version !== undefined && ticket.dispatchVersion !== undefined && ticket.dispatchVersion !== version) {
             return res.status(409).json({ error: 'CONFLICT: Ticket modified', currentStatus: ticket.dispatchStatus });

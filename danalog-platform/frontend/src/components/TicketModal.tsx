@@ -58,9 +58,10 @@ export function TicketModal({ ticket, isOpen, onClose, onSave, routeConfigs = []
             if (isSameDay) {
                 if (prev.nightStay) updates.nightStay = false;
             } else if (durationDays > 0) {
-                // For multi-day trips, enforce nightStay and its duration
+                // For multi-day trips, suggest nightStay
                 if (!prev.nightStay) updates.nightStay = true;
-                if (!prev.nightStayDays || prev.nightStayDays !== durationDays) {
+                // Only set nightStayDays as initial suggestion if it hasn't been set yet (don't overwrite driver/CS input)
+                if (!prev.nightStayDays || prev.nightStayDays === 0) {
                     updates.nightStayDays = durationDays;
                 }
             }
@@ -531,23 +532,37 @@ export function TicketModal({ ticket, isOpen, onClose, onSave, routeConfigs = []
                                             {formData.nightStay && (
                                                 <div className="animate-in fade-in zoom-in-95 duration-200 space-y-4">
                                                     <div>
-                                                        <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase">Số đêm</label>
+                                                        <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase">
+                                                            Số đêm
+                                                            {durationDays > 0 && formData.nightStayDays !== durationDays && (
+                                                                <span className="ml-2 text-[10px] text-amber-600 font-medium normal-case">
+                                                                    (HT gợi ý: {durationDays} đêm)
+                                                                </span>
+                                                            )}
+                                                        </label>
                                                         <div className="relative">
                                                             <input
                                                                 type="number"
                                                                 min="1"
-                                                                max={durationDays || 30}
-                                                                className={`w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm font-bold text-purple-700 ${!isSameDay && durationDays > 0 ? 'bg-slate-50 cursor-not-allowed text-slate-500' : ''}`}
+                                                                max="30"
+                                                                className={`w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm font-bold text-purple-700 ${
+                                                                    isReadOnly || (formData.status === 'APPROVED' || formData.status === 'COMPLETED') ? 'bg-slate-50 cursor-not-allowed text-slate-500' : ''
+                                                                }`}
                                                                 value={formData.nightStayDays || 1}
-                                                                disabled={!isSameDay && durationDays > 0}
+                                                                disabled={isReadOnly || formData.status === 'APPROVED' || formData.status === 'COMPLETED'}
                                                                 onChange={e => {
                                                                     const val = parseInt(e.target.value);
-                                                                    if (durationDays > 0 && val > durationDays) return;
+                                                                    if (isNaN(val) || val < 0) return;
                                                                     handleChange('nightStayDays', val);
                                                                 }}
                                                             />
                                                             <span className="absolute right-8 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-medium pointer-events-none">đêm</span>
                                                         </div>
+                                                        {durationDays > 0 && (
+                                                            <p className="text-[10px] text-slate-400 mt-1">
+                                                                Hệ thống tính: {durationDays} đêm (từ ngày đi → ngày về). Số thực tế do lái xe/CS nhập.
+                                                            </p>
+                                                        )}
                                                     </div>
 
                                                     <div>

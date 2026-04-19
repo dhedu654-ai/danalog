@@ -38,7 +38,12 @@ export const HomeMobile: React.FC<HomeMobileProps> = ({ tickets, routeConfigs, c
         setLoading(false);
     }, [currentUser]);
 
-    useEffect(() => { loadResponses(); }, [loadResponses]);
+    useEffect(() => { 
+        loadResponses(); 
+        // Auto-refresh responses every 30 seconds
+        const interval = setInterval(loadResponses, 30000);
+        return () => clearInterval(interval);
+    }, [loadResponses]);
 
     const handleAccept = async (ticketId: string) => {
         setRespondingTo(ticketId);
@@ -46,7 +51,15 @@ export const HomeMobile: React.FC<HomeMobileProps> = ({ tickets, routeConfigs, c
             await api.respondToDispatch(ticketId, 'ACCEPT', undefined, undefined, currentUser?.username);
             await loadResponses();
             onRefresh();
-            window.location.reload(); // Auto reload to show the accepted trip immediately
+            // Trigger parent data refresh instead of full page reload
+            if (onUpdateTickets) {
+                try {
+                    const freshTickets = await api.getTickets({ username: currentUser?.username, role: currentUser?.role });
+                    onUpdateTickets(freshTickets || []);
+                } catch (e) {
+                    console.error('Failed to refresh tickets after accept:', e);
+                }
+            }
         } catch (err) {
             console.error('Accept failed:', err);
         }
@@ -124,7 +137,8 @@ export const HomeMobile: React.FC<HomeMobileProps> = ({ tickets, routeConfigs, c
         const ticket = tickets.find(t => t.id === r.ticketId);
         if (!ticket) return false;
         if (ticket.driverUsername !== currentUser?.username) return false;
-        if (ticket.dispatchStatus !== 'DRIVER_ASSIGNED' && ticket.dispatchStatus !== 'ESCALATED') return false;
+        // Accept both DRIVER_ASSIGNED and DRIVER_PENDING (different systems use different names)
+        if (!['DRIVER_ASSIGNED', 'DRIVER_PENDING', 'ESCALATED'].includes(ticket.dispatchStatus || '')) return false;
         return true;
     });
     

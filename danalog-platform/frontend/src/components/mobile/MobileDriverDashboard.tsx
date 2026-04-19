@@ -55,12 +55,17 @@ export const MobileDriverDashboard: React.FC<MobileDriverDashboardProps> = ({
         setLocalNotifications(notifications);
     }, [notifications]);
 
-    // Check for pending dispatch responses
+    // Check for pending dispatch responses + auto-refresh every 30s
     useEffect(() => {
-        api.getDriverResponses().then(responses => {
-            const mine = responses.filter((r: any) => r.driverId === user?.username && r.response === 'PENDING');
-            setPendingCount(mine.length);
-        }).catch(() => { });
+        const checkPending = () => {
+            api.getDriverResponses().then(responses => {
+                const mine = responses.filter((r: any) => r.driverId === user?.username && r.response === 'PENDING');
+                setPendingCount(mine.length);
+            }).catch(() => { });
+        };
+        checkPending();
+        const interval = setInterval(checkPending, 30000);
+        return () => clearInterval(interval);
     }, [user, tickets]);
 
     const handleRefresh = () => {

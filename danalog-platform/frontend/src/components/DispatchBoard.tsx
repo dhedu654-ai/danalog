@@ -276,11 +276,13 @@ export function DispatchBoard({ tickets, currentUser, onRefreshTickets, focusedT
             const newStats = await api.getDashboardStats();
             setStats(newStats);
         } catch (err: any) {
-            if (err?.message === 'CONFLICT') {
-                alert('Dữ liệu đã thay đổi bởi người dùng khác. Vui lòng làm mới và thử lại.');
+            const errMsg = err?.message || '';
+            if (errMsg.includes('CONFLICT') || errMsg.includes('409')) {
+                alert(errMsg || 'Phiếu này đã được gán cho lái xe khác rồi. Vui lòng refresh lại trang.');
                 onRefreshTickets();
             } else {
                 console.error('Assign failed:', err);
+                alert('Gán lái xe thất bại: ' + errMsg);
             }
         }
         setAssigning(false);
@@ -854,25 +856,36 @@ export function DispatchBoard({ tickets, currentUser, onRefreshTickets, focusedT
                                         </td>
                                         <td className="px-5 py-3 text-right">
                                             {r.response === 'PENDING' && (() => {
-                                                const isSlow = !r.sentAt || Math.floor((new Date().getTime() - new Date(r.sentAt).getTime()) / 60000) > 30;
-                                                if (isSlow) {
-                                                    const t = tickets.find(tic => tic.id === r.ticketId);
-                                                    if (t) {
-                                                        return (
-                                                            <button 
-                                                                onClick={() => {
-                                                                    handleSuggest(t);
-                                                                    navigate(`${prefix}/board`);
-                                                                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                                                                }}
-                                                                className="bg-red-50 hover:bg-red-500 text-red-600 hover:text-white px-3 py-1.5 rounded text-[10px] font-bold uppercase transition-colors"
-                                                            >
-                                                                Gán lại ngay
-                                                            </button>
-                                                        );
-                                                    }
-                                                }
-                                                return null;
+                                                const minutesWaiting = r.sentAt ? Math.floor((new Date().getTime() - new Date(r.sentAt).getTime()) / 60000) : 999;
+                                                const isSlow = minutesWaiting > 30;
+                                                const t = tickets.find(tic => tic.id === r.ticketId);
+                                                if (!t) return null;
+                                                return (
+                                                    <button 
+                                                        onClick={async () => {
+                                                            if (!confirm(`Bạn có chắc muốn gán lại phiếu #${r.ticketId?.slice(-8)}?\nLái xe hiện tại: ${r.driverName}\nLý do: ${isSlow ? 'Không phản hồi (>' + minutesWaiting + ' phút)' : 'DV điều lại xe'}`)) return;
+                                                            try {
+                                                                await api.dispatchReassign(r.ticketId, currentUser?.username);
+                                                                onRefreshTickets();
+                                                                const newResponses = await api.getDriverResponses();
+                                                                setResponses(newResponses);
+                                                                const newLogs = await api.getDispatchLogs();
+                                                                setLogs(newLogs);
+                                                                navigate(`${prefix}/board`);
+                                                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                            } catch (err: any) {
+                                                                alert('Gán lại thất bại: ' + (err?.message || 'Unknown error'));
+                                                            }
+                                                        }}
+                                                        className={`px-3 py-1.5 rounded text-[10px] font-bold uppercase transition-colors ${
+                                                            isSlow 
+                                                                ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse shadow-sm shadow-red-200' 
+                                                                : 'bg-blue-50 hover:bg-blue-500 text-blue-600 hover:text-white'
+                                                        }`}
+                                                    >
+                                                        {isSlow ? `🚨 Gán lại ngay (${minutesWaiting}p)` : 'Gán lại'}
+                                                    </button>
+                                                );
                                             })()}
                                         </td>
                                     </tr>
