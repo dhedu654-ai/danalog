@@ -92,15 +92,14 @@ export const ROUTE_PRICES: Record<string, number> = {};
 
 // Preset zones - the UI will also include any custom zones found in existing routes
 export const ZONE_PRESETS = [
-    'Đà Nẵng',
-    'Quảng Nam',
-    'Quảng Trị',
-    'Huế',
-    'Quảng Ngãi',
-    'Quảng Bình',
-    'Phú Yên',
-    'Bình Định',
-    'Lào',
+    'Tuyến Nội thành Đà Nẵng',
+    'Tuyến Bắc (Huế)',
+    'Tuyến Bắc (Quảng Trị)',
+    'Tuyến Bắc (Quảng Bình)',
+    'Tuyến Nam (Quảng Nam)',
+    'Tuyến Nam (Quảng Ngãi)',
+    'Tuyến Nam (Bình Định/Phú Yên)',
+    'Tuyến Lào',
     'Khác'
 ] as const;
 

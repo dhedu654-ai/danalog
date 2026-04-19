@@ -367,17 +367,58 @@ export function RouteConfigModal({ config, isOpen, onClose, onSave, onRefresh, i
                                         </div>
 
                                         <div className="col-span-2 md:col-span-1">
-                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Khách hàng</label>
-                                            <select
-                                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium text-slate-700 disabled:bg-slate-100 disabled:text-slate-500"
-                                                value={formData.customer || ''}
-                                                onChange={e => handleChange('customer', e.target.value)}
-                                            >
-                                                <option value="">Chọn khách hàng...</option>
-                                                {customers.map(c => (
-                                                    <option key={c.id} value={c.name}>{c.name}</option>
-                                                ))}
-                                            </select>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Khách hàng (Có thể chọn nhiều)</label>
+                                            <div className="relative group">
+                                                <div className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-blue-500 font-medium text-slate-700 min-h-[46px] flex flex-wrap gap-1 items-center cursor-pointer">
+                                                    {(formData.customer ? formData.customer.split(',').map(s => s.trim()).filter(Boolean) : []).length === 0 ? (
+                                                        <span className="text-slate-400">Chọn khách hàng...</span>
+                                                    ) : (
+                                                        (formData.customer ? formData.customer.split(',').map(s => s.trim()).filter(Boolean) : []).map((c, i) => (
+                                                            <span key={i} className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-sm flex items-center gap-1">
+                                                                {c}
+                                                                <button 
+                                                                    type="button" 
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        const current = formData.customer ? formData.customer.split(',').map(s => s.trim()).filter(Boolean) : [];
+                                                                        handleChange('customer', current.filter(x => x !== c).join(', '));
+                                                                    }}
+                                                                    className="hover:text-blue-900"
+                                                                >
+                                                                    <X size={14} />
+                                                                </button>
+                                                            </span>
+                                                        ))
+                                                    )}
+                                                </div>
+                                                {/* Dropdown menu */}
+                                                <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto hidden group-hover:block hover:block p-2">
+                                                    {customers.map(c => {
+                                                        const current = formData.customer ? formData.customer.split(',').map(s => s.trim()).filter(Boolean) : [];
+                                                        const isSelected = current.includes(c.name);
+                                                        return (
+                                                            <label key={c.id} className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded cursor-pointer">
+                                                                <input 
+                                                                    type="checkbox" 
+                                                                    checked={isSelected}
+                                                                    onChange={(e) => {
+                                                                        if (e.target.checked) {
+                                                                            handleChange('customer', [...current, c.name].join(', '));
+                                                                        } else {
+                                                                            handleChange('customer', current.filter(x => x !== c.name).join(', '));
+                                                                        }
+                                                                    }}
+                                                                    className="rounded text-blue-600 focus:ring-blue-500"
+                                                                />
+                                                                <span className="text-sm font-medium text-slate-700">{c.name}</span>
+                                                            </label>
+                                                        );
+                                                    })}
+                                                    {customers.length === 0 && (
+                                                        <div className="p-2 text-sm text-slate-500 text-center">Chưa có dữ liệu khách hàng</div>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
 
                                         {/* Row 3: KM & Zone */}
