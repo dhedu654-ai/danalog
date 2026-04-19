@@ -253,7 +253,12 @@ export const api = {
     },
     createCustomer: async (customer: any) => {
          const payload = { ...customer };
-         if (!payload.id) delete payload.id;
+         if (!payload.id) {
+             payload.id = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                 const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+                 return v.toString(16);
+             });
+         }
          const { data, error } = await supabase.from('Customers').insert([payload]).select();
          if(error) throw new Error(error.message);
          return data?.[0];
