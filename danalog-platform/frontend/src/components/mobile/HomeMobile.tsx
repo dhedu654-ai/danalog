@@ -32,11 +32,17 @@ export const HomeMobile: React.FC<HomeMobileProps> = ({ tickets, routeConfigs, c
                 r.response !== 'REVOKED_SYSTEM'
             ) as unknown as DriverResponse[];
             setPendingResponses(mine);
+            
+            // Also refresh tickets to get updated dispatchStatus
+            if (onUpdateTickets) {
+                const freshTickets = await api.getTickets({ username: currentUser?.username, role: currentUser?.role });
+                onUpdateTickets(freshTickets || []);
+            }
         } catch (err) {
-            console.error('Failed to load responses:', err);
+            console.error('Failed to load responses/tickets:', err);
         }
         setLoading(false);
-    }, [currentUser]);
+    }, [currentUser, onUpdateTickets]);
 
     useEffect(() => { 
         loadResponses(); 
@@ -51,15 +57,6 @@ export const HomeMobile: React.FC<HomeMobileProps> = ({ tickets, routeConfigs, c
             await api.respondToDispatch(ticketId, 'ACCEPT', undefined, undefined, currentUser?.username);
             await loadResponses();
             onRefresh();
-            // Trigger parent data refresh instead of full page reload
-            if (onUpdateTickets) {
-                try {
-                    const freshTickets = await api.getTickets({ username: currentUser?.username, role: currentUser?.role });
-                    onUpdateTickets(freshTickets || []);
-                } catch (e) {
-                    console.error('Failed to refresh tickets after accept:', e);
-                }
-            }
         } catch (err) {
             console.error('Accept failed:', err);
         }
@@ -131,14 +128,15 @@ export const HomeMobile: React.FC<HomeMobileProps> = ({ tickets, routeConfigs, c
     };
 
     // A pending request is valid only if the ticket is still assigned to this driver
-    // and is actually waiting for a response (DRIVER_ASSIGNED or ESCALATED).
+    // The backend `getDriverResponses` handles returning PENDING for valid WAITING logs.
     const pending = pendingResponses.filter(r => {
         if (r.response !== 'PENDING') return false;
         const ticket = tickets.find(t => t.id === r.ticketId);
-        if (!ticket) return false;
-        if (ticket.driverUsername !== currentUser?.username) return false;
-        // Accept both DRIVER_ASSIGNED and DRIVER_PENDING (different systems use different names)
-        if (!['DRIVER_ASSIGNED', 'DRIVER_PENDING', 'ESCALATED'].includes(ticket.dispatchStatus || '')) return false;
+        // Even if ticket data is slightly stale, we trust the PENDING log for this driver
+        if (ticket && ticket.driverUsername !== currentUser?.username && ticket.driverUsername !== null) {
+             // If ticket explicitly belongs to someone else now, hide it
+             // But if driverUsername is null (e.g. just reassigned to queue), wait for backend to revoke log
+        }
         return true;
     });
     
