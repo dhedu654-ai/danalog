@@ -688,6 +688,7 @@ function AppContent() {
             case 'dispatch_responses': return 'Phản hồi Lái xe';
             case 'dispatch_logs': return 'Lịch sử Phân công';
 
+            case 'schedule': return 'Lịch Điều Phối';
             case 'order_list': return 'Danh Sách Đơn Hàng';
             case 'cs_check': return isAccountant ? 'Kế Toán Đối Soát Phiếu' : 'CS Kiểm Tra / Phê Duyệt Phiếu';
             case 'ticket_corrections': return 'Yêu Cầu Sửa Đổi';
