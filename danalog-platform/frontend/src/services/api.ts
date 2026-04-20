@@ -91,9 +91,16 @@ export const api = {
     }).then(r => r.json()),
     
     updateOrder: async (id: string, updates: any) => {
-        const { data, error } = await supabase.from('Orders').update(updates).eq('id', id).select();
-        if (error) throw new Error(error.message);
-        return data?.[0];
+        const r = await fetchWithToken(`${API_URL}/orders?id=${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates)
+        });
+        if (!r.ok) {
+            const err = await r.json().catch(() => ({}));
+            throw new Error(err.error || 'Failed to update order');
+        }
+        return r.json();
     },
 
     // Tickets
