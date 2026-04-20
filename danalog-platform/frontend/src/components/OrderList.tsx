@@ -151,19 +151,21 @@ export function OrderList({ currentUser, onRefreshTickets }: { currentUser: any;
                 return;
             }
 
-            // Update order
             const updatedOrder = {
                 ...editingOrder,
                 pickupDate: editFormData.pickupDate,
                 deliveryDate: editFormData.deliveryDate,
                 containers: editFormData.containers,
-                notes: editFormData.notes,
-                lastEditedBy: currentUser?.username,
-                lastEditedAt: new Date().toISOString(),
-                editChanges: changes
+                notes: editFormData.notes
             };
+            
+            // Lọc bỏ các trường không tồn tại trên DB trước khi gửi
+            const orderPayload = { ...updatedOrder };
+            delete (orderPayload as any).editChanges;
+            delete (orderPayload as any).lastEditedBy;
+            delete (orderPayload as any).lastEditedAt;
 
-            await api.updateOrder(editingOrder.id, updatedOrder);
+            await api.updateOrder(editingOrder.id, orderPayload);
 
             // If in assign process, update linked tickets and send notification
             if (isInAssignProcess(editingOrder)) {
@@ -176,8 +178,18 @@ export function OrderList({ currentUser, onRefreshTickets }: { currentUser: any;
                     if (editFormData.deliveryDate !== editingOrder.deliveryDate) updates.dateEnd = editFormData.deliveryDate;
 
                     if (Object.keys(updates).length > 0) {
-                        updates.editHighlight = changes; // Store changes for highlighting
-                        await api.updateTicket(ticket.id, { ...ticket, ...updates });
+                        // Append to statusHistory to log the change, instead of editHighlight
+                        const log = {
+                            status: 'Đã sửa đổi',
+                            timestamp: new Date().toISOString(),
+                            user: currentUser?.name || currentUser?.username || 'System',
+                            action: `Order updated: ${changes.join(', ')}`
+                        };
+                        const ticketPayload = { ...ticket, ...updates };
+                        ticketPayload.statusHistory = [log, ...(ticket.statusHistory || [])];
+                        
+                        delete ticketPayload.editHighlight;
+                        await api.updateTicket(ticket.id, ticketPayload);
                     }
                 }
 

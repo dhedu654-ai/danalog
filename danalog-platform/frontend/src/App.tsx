@@ -675,11 +675,7 @@ function AppContent() {
                     )}
                     
                     {/* Dashboards - Kept minimal as per requirement */}
-                    <Route path="dashboard" element={
-                        isAdmin ? <CompanyOverviewDashboard tickets={tickets} onNavigate={handleDashboardNavigate} /> :
-                        <Navigate to="schedule" />
-                    } />
-                    <Route path="dashboard-overview" element={<CompanyOverviewDashboard tickets={tickets} onNavigate={handleDashboardNavigate} />} />
+                    <Route path="dashboard" element={<Navigate to="schedule" replace />} />
                 </Route>
             </Routes>
         );
@@ -769,10 +765,6 @@ function AppContent() {
                 </div>
 
                 <nav className="flex-1 overflow-y-auto py-3 space-y-0.5">
-                    {/* Admin Dashboard */}
-                    {isAdmin && (
-                        <NavItem label="Dashboard Admin" icon={<PieChart size={18} />} active={activeTab === 'dashboard' || activeTab === 'db_overview'} onClick={() => navigate(getRoutePath('dashboard', prefix))} />
-                    )}
 
                     {/* ── DISPATCH CENTER ── */}
                     {canViewDispatch && (
