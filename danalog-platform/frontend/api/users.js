@@ -1,4 +1,5 @@
 import { supabase } from './_supabase.js';
+import bcrypt from 'bcryptjs';
 
 export default async function handler(req, res) {
     if (req.method === 'POST') {
@@ -16,9 +17,12 @@ export default async function handler(req, res) {
                 return res.status(409).json({ error: 'Username already exists' });
             }
 
+            // Hash password before storing
+            const hashedPassword = await bcrypt.hash(password, 10);
+
             const userData = {
                 username,
-                password, // In production, this should be hashed
+                password: hashedPassword,
                 role,
                 name,
                 licensePlate: licensePlate || null,
@@ -31,7 +35,9 @@ export default async function handler(req, res) {
             const { data, error } = await supabase.from('Users').insert([userData]).select();
             if (error) return res.status(500).json({ error: error.message });
 
-            return res.status(201).json(data[0]);
+            // Don't send password back
+            const { password: p, ...userWithoutPassword } = data[0];
+            return res.status(201).json(userWithoutPassword);
         } catch (err) {
             return res.status(500).json({ error: err.message });
         }
@@ -48,6 +54,11 @@ export default async function handler(req, res) {
             delete updates.username;
             delete updates.created_at;
 
+            // Hash password if it's being updated
+            if (updates.password && updates.password.length > 0) {
+                updates.password = await bcrypt.hash(updates.password, 10);
+            }
+
             const { data, error } = await supabase
                 .from('Users')
                 .update(updates)
@@ -57,7 +68,9 @@ export default async function handler(req, res) {
             if (error) return res.status(500).json({ error: error.message });
             if (!data || data.length === 0) return res.status(404).json({ error: 'User not found' });
 
-            return res.status(200).json(data[0]);
+            // Don't send password back
+            const { password: p, ...userWithoutPassword } = data[0];
+            return res.status(200).json(userWithoutPassword);
         } catch (err) {
             return res.status(500).json({ error: err.message });
         }
