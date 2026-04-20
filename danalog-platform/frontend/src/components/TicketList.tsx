@@ -101,10 +101,13 @@ export function TicketList({ tickets, onUpdateTickets, onUpdateTicket, routeConf
 
             return true;
         }).sort((a, b) => {
-            // Sort by Creaton Time (ID is T-{timestamp})
-            // Lexicographical sort works for fixed length, but ID is string.
-            // Since ID format is T-TIMESTAMP, straight string comparison works if timestamp length is same.
-            // Better to match robustly or just string compare if consistent.
+            // Sắp xếp theo ngày kết thúc gần nhất đến xa nhất (dateEnd DESC)
+            const dateA = new Date(a.dateEnd || a.dateStart || 0).getTime();
+            const dateB = new Date(b.dateEnd || b.dateStart || 0).getTime();
+            if (dateA !== dateB) {
+                return dateB - dateA;
+            }
+            // Nếu cùng ngày, xếp theo ID để giữ thứ tự ổn định
             return b.id.localeCompare(a.id);
         });
     }, [tickets, filters]);

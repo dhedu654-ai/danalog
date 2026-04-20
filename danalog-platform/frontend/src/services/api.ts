@@ -98,7 +98,7 @@ export const api = {
 
     // Tickets
     getTickets: async (userInfo?: { username?: string, role?: string }) => {
-        let query = supabase.from('Tickets').select('*').order('dateStart', { ascending: false });
+        let query = supabase.from('Tickets').select('*').order('dateEnd', { ascending: false });
         if (userInfo?.username && userInfo?.role === 'DRIVER') query = query.eq('driverUsername', userInfo.username);
         const { data, error } = await query;
         if (error) throw new Error(error.message);

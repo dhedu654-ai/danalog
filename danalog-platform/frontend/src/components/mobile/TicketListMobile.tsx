@@ -74,8 +74,13 @@ export const TicketListMobile: React.FC<TicketListMobileProps> = ({ tickets = []
             }
             return true;
         }).sort((a, b) => {
-            // Sort by Creation Time (Newest First)
-            // Assumes ID "T-{timestamp}"
+            // Sắp xếp theo ngày kết thúc gần nhất đến xa nhất (dateEnd DESC)
+            const dateA = new Date(a.dateEnd || a.dateStart || 0).getTime();
+            const dateB = new Date(b.dateEnd || b.dateStart || 0).getTime();
+            if (dateA !== dateB) {
+                return dateB - dateA;
+            }
+            // Nếu cùng ngày, xếp theo ID để giữ thứ tự ổn định
             return b.id.localeCompare(a.id);
         });
     }, [tickets, user, filterStatus, filterTime, selectedMonths, selectedYear, dateRange]);
