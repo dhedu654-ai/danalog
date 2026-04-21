@@ -124,7 +124,7 @@ export const CSStaffSchedule: React.FC<Props> = ({ tickets, currentUser }) => {
                 <KPICard label="Tổng PVT" value={stats.total} color={statusFilter === null ? 'blue' : 'slate'} onClick={() => setStatusFilter(null)} />
                 <KPICard label="Đang chạy" value={stats.progress} color={statusFilter === 'IN_PROGRESS' ? 'cyan' : 'slate'} onClick={() => setStatusFilter('IN_PROGRESS')} />
                 <KPICard label="Hoàn thành" value={stats.completed} color={statusFilter === 'COMPLETED' ? 'emerald' : 'slate'} onClick={() => setStatusFilter('COMPLETED')} />
-                <KPICard label="Phiếu chờ duyệt" value={baseMyTickets.filter(t => t.status === 'PENDING').length} color="amber" onClick={() => navigate('/cs/tickets')} />
+                <KPICard label="Phiếu chờ duyệt" value={tickets.filter(t => t.status === 'PENDING').length} color="amber" onClick={() => navigate('/cs/tickets')} />
                 <KPICard label="Yêu cầu sửa đổi" value={myCorrections.filter(c => c.status === 'PENDING').length} color="rose" onClick={() => navigate('/cs/corrections')} />
             </div>
 
