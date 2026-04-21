@@ -3008,7 +3008,7 @@ app.post('/api/dispatch/override', (req, res) => {
             if (oldRespIdx !== -1) {
                 const oldResp = db.driver_responses[oldRespIdx];
                 const elapsed = new Date().getTime() - new Date(oldResp.sentAt || ticket.assignedAt).getTime();
-                const newResponse = elapsed > 30 * 60000 ? 'NO_RESPONSE' : 'REVOKED_SYSTEM';
+                const newResponse = 'NO_RESPONSE';
                 db.driver_responses[oldRespIdx] = {
                     ...oldResp,
                     response: newResponse,
@@ -3295,13 +3295,13 @@ app.post('/api/dispatch/driver-response', (req, res) => {
         if (ticketIdx !== -1) {
             const ticket = db.tickets[ticketIdx];
             
-            if (response === 'ACCEPTED') {
+            if (response === 'ACCEPT' || response === 'ACCEPTED') {
                 db.tickets[ticketIdx].dispatchStatus = 'DRIVER_ACCEPTED';
                 db.tickets[ticketIdx].status = 'ĐANG VẬN CHUYỂN';
                 db.tickets[ticketIdx].version = (ticket.version || 1) + 1;
                 notify(db, 'DISPATCHER', `Lái xe ${driverUsername} đã nhận phiếu ${ticketId}`, 'SUCCESS', ticketId);
                 notify(db, 'CS', `Lái xe ${driverUsername} đã nhận phiếu ${ticketId}`, 'INFO', ticketId);
-            } else if (response === 'REJECTED') {
+            } else if (response === 'REJECT' || response === 'REJECTED') {
                 const reasonMap = {
                     BUSY: 'Đang bận',
                     VEHICLE_ISSUE: 'Xe gặp sự cố',

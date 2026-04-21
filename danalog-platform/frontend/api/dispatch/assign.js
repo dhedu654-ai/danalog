@@ -47,7 +47,7 @@ async function doAssign(req, res, ticket, driver, ticketId, assignType, reason, 
     // 2.5 Revoke any existing 'WAITING' logs for this ticket
     await supabase.from('DispatchLogs')
         .update({ 
-            responseStatus: 'REVOKED_SYSTEM',
+            responseStatus: 'NO_RESPONSE',
             responseReason: 'Hệ thống tự động thu hồi do Điều vận gán cho tài xế khác',
             respondedAt: new Date().toISOString()
         })

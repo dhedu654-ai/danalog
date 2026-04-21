@@ -45,7 +45,7 @@ export default async function handler(req, res) {
         // 4. Update the old dispatch log → NO_RESPONSE / REVOKED
         if (activeLog) {
             await supabase.from('DispatchLogs').update({
-                responseStatus: minutesElapsed > 30 ? 'NO_RESPONSE' : 'REVOKED_SYSTEM',
+                responseStatus: 'NO_RESPONSE',
                 responseReason: reason,
                 respondedAt: new Date().toISOString()
             }).eq('id', activeLog.id);
@@ -54,7 +54,7 @@ export default async function handler(req, res) {
         // Also revoke any other WAITING logs for this ticket
         await supabase.from('DispatchLogs')
             .update({
-                responseStatus: 'REVOKED_SYSTEM',
+                responseStatus: 'NO_RESPONSE',
                 responseReason: 'Hệ thống thu hồi do điều vận gán lại',
                 respondedAt: new Date().toISOString()
             })
