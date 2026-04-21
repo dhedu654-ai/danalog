@@ -145,7 +145,7 @@ const DEFAULT_SLA_CONFIG = {
     standardAssignTime: 15,   // minutes (legacy, not used)
     priorityAssignTime: 5,    // minutes (legacy, not used)
     driverResponseTime: 30,   // minutes — sau 30 phút không phản hồi thì tự đánh NO_RESPONSE
-    maxAssignmentCycles: 3,   // escalate after N cycles
+
     enableReminders: true,
     enableDashboardAlert: true
 };
@@ -2911,8 +2911,7 @@ app.post('/api/dispatch/assign', (req, res) => {
         }
         
         // Update ticket
-        const cycleNo = (ticket.currentCycleNo || 0) + 1;
-        const cycleId = `AC-${ticketId}-${cycleNo}`;
+        const assignId = `AS-${ticketId}-${Date.now()}`;
         
         db.tickets[ticketIdx] = {
             ...ticket,
@@ -2924,8 +2923,7 @@ app.post('/api/dispatch/assign', (req, res) => {
             assignType,
             assignedAt: new Date().toISOString(),
             status: 'ĐÃ ĐIỀU XE',
-            currentAssignmentCycleId: cycleId,
-            currentCycleNo: cycleNo,
+
             dispatcherUsername: dispatcherUsername || 'system',
             version: (ticket.version || 1) + 1
         };
@@ -2944,8 +2942,7 @@ app.post('/api/dispatch/assign', (req, res) => {
             id: 'DL-' + Date.now(),
             ticketId,
             ticketRoute: ticket.route || '',
-            assignmentCycleId: cycleId,
-            cycleNo,
+            assignmentId: assignId,
             candidates,
             rejectedCandidates: rejectedCandidates || [],
             assignedDriverId: driver.username,
@@ -2964,7 +2961,7 @@ app.post('/api/dispatch/assign', (req, res) => {
         if (!db.driver_responses) db.driver_responses = [];
         db.driver_responses.unshift({
             id: 'DR-' + Date.now(),
-            assignmentId: cycleId,
+            assignmentId: assignId,
             ticketId,
             driverId: driver.username,
             driverName: driver.name,
@@ -3005,8 +3002,7 @@ app.post('/api/dispatch/override', (req, res) => {
         const driver = (db.users || []).find(u => u.username === driverId);
         if (!driver) return res.status(404).json({ error: 'Driver not found' });
         
-        const cycleNo = (ticket.currentCycleNo || 0) + 1;
-        const cycleId = `AC-${ticketId}-${cycleNo}`;
+        const assignId = `AS-${ticketId}-${Date.now()}`;
         
         db.tickets[ticketIdx] = {
             ...ticket,
@@ -3018,8 +3014,7 @@ app.post('/api/dispatch/override', (req, res) => {
             assignType: 'override',
             assignedAt: new Date().toISOString(),
             status: 'ĐÃ ĐIỀU XE',
-            currentAssignmentCycleId: cycleId,
-            currentCycleNo: cycleNo,
+
             dispatcherUsername: dispatcherUsername || 'system',
             version: (ticket.version || 1) + 1
         };
@@ -3033,8 +3028,7 @@ app.post('/api/dispatch/override', (req, res) => {
             id: 'DL-' + Date.now(),
             ticketId,
             ticketRoute: ticket.route || '',
-            assignmentCycleId: cycleId,
-            cycleNo,
+            assignmentId: assignId,
             candidates: [],
             rejectedCandidates: [],
             assignedDriverId: driver.username,
@@ -3054,7 +3048,7 @@ app.post('/api/dispatch/override', (req, res) => {
         if (!db.driver_responses) db.driver_responses = [];
         db.driver_responses.unshift({
             id: 'DR-' + Date.now(),
-            assignmentId: cycleId,
+            assignmentId: assignId,
             ticketId,
             driverId: driver.username,
             driverName: driver.name,
@@ -3091,8 +3085,7 @@ app.post('/api/dispatch/auto-assign', (req, res) => {
         }
         
         const top = candidates[0];
-        const cycleNo = (ticket.currentCycleNo || 0) + 1;
-        const cycleId = `AC-${ticketId}-${cycleNo}`;
+        const assignId = `AS-${ticketId}-${Date.now()}`;
         
         db.tickets[ticketIdx] = {
             ...ticket,
@@ -3104,8 +3097,7 @@ app.post('/api/dispatch/auto-assign', (req, res) => {
             assignType: 'auto',
             assignedAt: new Date().toISOString(),
             status: 'ĐÃ ĐIỀU XE',
-            currentAssignmentCycleId: cycleId,
-            currentCycleNo: cycleNo,
+
             version: (ticket.version || 1) + 1
         };
         
@@ -3116,8 +3108,7 @@ app.post('/api/dispatch/auto-assign', (req, res) => {
             id: 'DL-' + Date.now(),
             ticketId,
             ticketRoute: ticket.route || '',
-            assignmentCycleId: cycleId,
-            cycleNo,
+            assignmentId: assignId,
             candidates,
             rejectedCandidates: [],
             assignedDriverId: top.driverId,
@@ -3134,7 +3125,7 @@ app.post('/api/dispatch/auto-assign', (req, res) => {
         if (!db.driver_responses) db.driver_responses = [];
         db.driver_responses.unshift({
             id: 'DR-' + Date.now(),
-            assignmentId: cycleId,
+            assignmentId: assignId,
             ticketId,
             driverId: top.driverId,
             driverName: top.driverName,
@@ -3267,8 +3258,6 @@ app.post('/api/dispatch/driver-response', (req, res) => {
     try {
         const { ticketId, response, rejectReasonCode, reason, driverUsername } = req.body;
         const db = readDb();
-        const slaConfig = db.sla_config || DEFAULT_SLA_CONFIG;
-        const maxCycles = slaConfig.maxAssignmentCycles || 3;
         
         // Find the pending response for this ticket
         const respIdx = (db.driver_responses || []).findIndex(r => 
@@ -3298,8 +3287,6 @@ app.post('/api/dispatch/driver-response', (req, res) => {
                 notify(db, 'DISPATCHER', `Lái xe ${driverUsername} đã nhận phiếu ${ticketId}`, 'SUCCESS', ticketId);
                 notify(db, 'CS', `Lái xe ${driverUsername} đã nhận phiếu ${ticketId}`, 'INFO', ticketId);
             } else if (response === 'REJECTED') {
-                const currentCycle = ticket.currentCycleNo || 1;
-                
                 const reasonMap = {
                     BUSY: 'Đang bận',
                     VEHICLE_ISSUE: 'Xe gặp sự cố',
@@ -3309,24 +3296,13 @@ app.post('/api/dispatch/driver-response', (req, res) => {
                 };
                 const displayReason = reason || reasonMap[rejectReasonCode] || rejectReasonCode || 'Không có lý do';
 
-                if (currentCycle >= maxCycles) {
-                    // ESCALATED — max cycles reached
-                    db.tickets[ticketIdx].dispatchStatus = 'ESCALATED';
-                    db.tickets[ticketIdx].status = 'CHỜ ĐIỀU XE';
-                    delete db.tickets[ticketIdx].assignedDriverId;
-                    delete db.tickets[ticketIdx].assignedDriverName;
-                    db.tickets[ticketIdx].version = (ticket.version || 1) + 1;
-                    notify(db, 'DV_LEAD', `⚠️ Cảnh báo: Kế hoạch phân công phiếu ${ticketId} thất bại liên tiếp ${currentCycle} lần. Cần xử lý thủ công.`, 'ERROR', ticketId);
-                    notify(db, 'DISPATCHER', `⚠️ Cảnh báo: Phiếu ${ticketId} bị từ chối vượt quá số lần quy định (${maxCycles} lần).`, 'ERROR', ticketId);
-                } else {
-                    // Re-queue for next cycle
-                    db.tickets[ticketIdx].dispatchStatus = 'WAITING_DISPATCH';
-                    db.tickets[ticketIdx].status = 'CHỜ ĐIỀU XE';
-                    delete db.tickets[ticketIdx].assignedDriverId;
-                    delete db.tickets[ticketIdx].assignedDriverName;
-                    db.tickets[ticketIdx].version = (ticket.version || 1) + 1;
-                    notify(db, 'DISPATCHER', `Thất bại lần ${currentCycle}: Lái xe ${driverUsername} đã từ chối phiếu ${ticketId} vì ${displayReason}.`, 'ERROR', ticketId);
-                }
+                // Revert to WAITING_DISPATCH for manual re-assignment
+                db.tickets[ticketIdx].dispatchStatus = 'WAITING_DISPATCH';
+                db.tickets[ticketIdx].status = 'CHỜ ĐIỀU XE';
+                delete db.tickets[ticketIdx].assignedDriverId;
+                delete db.tickets[ticketIdx].assignedDriverName;
+                db.tickets[ticketIdx].version = (ticket.version || 1) + 1;
+                notify(db, 'DISPATCHER', `Lái xe ${driverUsername} đã từ chối phiếu ${ticketId} vì ${displayReason}. Vui lòng phân công lại.`, 'ERROR', ticketId);
             }
         }
         
@@ -3390,9 +3366,7 @@ app.get('/api/dashboard/stats', (req, res) => {
         });
         const continuityUsageRate = totalLogs > 0 ? Math.round((continuityLogs.length / totalLogs) * 100) : 0;
         
-        // Escalation
-        const escalatedTickets = tickets.filter(t => t.dispatchStatus === 'ESCALATED').length;
-        const escalationRate = totalLogs > 0 ? Math.round((escalatedTickets / Math.max(totalLogs, 1)) * 100) : 0;
+
         
         // Average response time (minutes)
         const respondedResponses = responses.filter(r => r.respondedAt && r.sentAt && r.response !== 'PENDING');
@@ -3434,8 +3408,8 @@ app.get('/api/dashboard/stats', (req, res) => {
             rejectionRate,
             slaComplianceRate,
             continuityUsageRate,
-            escalationRate,
-            escalatedTickets,
+            overdue: stats.overdue,
+
             // Response stats
             noResponseCount: noResponseResponses.length,
             avgResponseTime,

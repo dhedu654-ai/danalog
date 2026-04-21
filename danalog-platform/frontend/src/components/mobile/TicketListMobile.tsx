@@ -51,7 +51,7 @@ export const TicketListMobile: React.FC<TicketListMobileProps> = ({ tickets = []
             if (user && ticket.driverUsername !== user.username && ticket.createdBy !== user.username) return false;
 
             // Hide pending assignment tickets (they belong in Home pending queue, not history)
-            if (['DRIVER_ASSIGNED', 'ESCALATED'].includes(ticket.dispatchStatus || '') || ticket.status === 'ĐÃ ĐIỀU XE') {
+            if (['DRIVER_ASSIGNED'].includes(ticket.dispatchStatus || '') || ticket.status === 'ĐÃ ĐIỀU XE') {
                 return false;
             }
 

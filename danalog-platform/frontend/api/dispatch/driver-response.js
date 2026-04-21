@@ -17,7 +17,7 @@ export default async function handler(req, res) {
 
         // 2. Validate: ticket must be in a state waiting for driver response
         //    Accept both DRIVER_ASSIGNED and ĐÃ ĐIỀU XE (which assign.js sets)
-        const validStatuses = ['DRIVER_ASSIGNED', 'ESCALATED', 'ĐÃ ĐIỀU XE'];
+        const validStatuses = ['DRIVER_ASSIGNED', 'ĐÃ ĐIỀU XE'];
         if (!validStatuses.includes(ticket.dispatchStatus || '') && !validStatuses.includes(ticket.status || '')) {
             return res.status(400).json({ 
                 error: `Phiếu không ở trạng thái chờ phản hồi (hiện tại: ${ticket.dispatchStatus || ticket.status})` 

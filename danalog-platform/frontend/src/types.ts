@@ -124,8 +124,7 @@ export interface DispatchLog {
     id: string;
     ticketId: string;
     ticketRoute: string;
-    assignmentCycleId: string;
-    cycleNo: number;
+    assignmentId: string;
     candidates: DispatchCandidate[];
     rejectedCandidates: RejectedCandidate[];
     assignedDriverId: string;
@@ -174,7 +173,7 @@ export type DispatchStatus =
     | 'DRIVER_ACCEPTED'
     | 'DRIVER_REJECTED'
     | 'NO_CANDIDATE'
-    | 'ESCALATED'
+
     | 'IN_PROGRESS'
     | 'COMPLETED';
 
@@ -187,7 +186,7 @@ export const DISPATCH_STATUS_LABELS: Record<DispatchStatus, string> = {
     DRIVER_ACCEPTED: 'Đã nhận',
     DRIVER_REJECTED: 'Từ chối',
     NO_CANDIDATE: 'Không có ứng viên',
-    ESCALATED: 'Cần xử lý',
+
     IN_PROGRESS: 'Đang vận chuyển',
     COMPLETED: 'Hoàn thành',
 };
@@ -201,7 +200,7 @@ export const DISPATCH_STATUS_COLORS: Record<DispatchStatus, { bg: string; text: 
     DRIVER_ACCEPTED: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-100' },
     DRIVER_REJECTED: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-100' },
     NO_CANDIDATE: { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-100' },
-    ESCALATED: { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-100' },
+
     IN_PROGRESS: { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-100' },
     COMPLETED: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-100' },
 };
@@ -226,7 +225,7 @@ export interface DashboardStats {
     autoAssignRate: number;          // percentage
     aiSuggestedRate: number;         // percentage — top 1 selection rate
     overrideRate: number;            // percentage
-    escalationRate: number;          // percentage
+
     continuityUsageRate: number;     // percentage
     recentAssignments: DispatchLog[];
 }
@@ -248,7 +247,7 @@ export interface DispatchQueueItem {
     priorityBreakdown: PriorityBreakdown;
 
     dispatchStatus: DispatchStatus;
-    currentCycleNo: number;
+
     version: number;
 }
 
@@ -333,8 +332,7 @@ export interface TransportTicket {
     assignedAt?: string;
     assignType?: DispatchAssignType;
 
-    currentAssignmentCycleId?: string;
-    currentCycleNo?: number;
+
     version?: number;                 // Optimistic lock
     
     // Parent Order

@@ -398,6 +398,12 @@ export function DispatchBoard({ tickets, currentUser, onRefreshTickets, focusedT
                     <p className="text-sm text-slate-500">Quản lý và điều phối đơn hàng tự động thông minh</p>
                 </div>
                 <div className="flex items-center gap-3">
+                    {stats?.overdue > 0 && (
+                        <div className="px-3 py-1.5 bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-sm font-bold flex items-center gap-2 animate-pulse cursor-default" title={`${stats.overdue} phiếu đã gán cho tài xế quá 30 phút nhưng chưa nhận/từ chối.`}>
+                            <AlertTriangle size={14} />
+                            {stats.overdue} chưa phản hồi
+                        </div>
+                    )}
                     <button
                         onClick={() => { onRefreshTickets(); api.getDashboardStats().then(setStats); }}
                         className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-2"
@@ -481,8 +487,7 @@ export function DispatchBoard({ tickets, currentUser, onRefreshTickets, focusedT
                                                 {ticket.size && <span className="px-1.5 py-0.5 bg-slate-100 rounded text-[10px] font-bold">{ticket.size}'</span>}
                                                 {ticket.fe && <span className="px-1.5 py-0.5 bg-slate-100 rounded text-[10px] font-bold">{ticket.fe}</span>}
                                                 {ticket.customerCode && <span>{ticket.customerCode}</span>}
-                                                {ticket.dispatchStatus === 'ESCALATED' && <span className="px-1.5 py-0.5 bg-rose-100 text-rose-700 rounded text-[10px] font-bold animate-pulse">⚠ ESC</span>}
-                                                {ticket.currentCycleNo && ticket.currentCycleNo > 1 && <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px] font-bold">C{ticket.currentCycleNo}</span>}
+
                                             </div>
                                         </div>
                                     );
@@ -1058,7 +1063,7 @@ export function DispatchBoard({ tickets, currentUser, onRefreshTickets, focusedT
                                             {(t.dispatchStatus === 'ASSIGNED' || t.dispatchStatus === 'DRIVER_ASSIGNED' || t.dispatchStatus === 'DRIVER_ACCEPTED') && <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">ĐÃ NHẬN</span>}
                                             {t.dispatchStatus === 'DRIVER_REJECTED' && <span className="text-xs font-bold text-red-600 bg-red-50 px-2.5 py-1 rounded-full border border-red-100">TỪ CHỐI</span>}
                                             {t.dispatchStatus === 'NO_CANDIDATE' && <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2.5 py-1 rounded-full border border-orange-100">KHÔNG CÓ ỨNG VIÊN</span>}
-                                            {t.dispatchStatus === 'ESCALATED' && <span className="text-xs font-bold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-100">CẦN XỬ LÝ</span>}
+
                                             {t.dispatchStatus === 'WAITING_DISPATCH' && <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-full">CHỜ ĐIỀU XE</span>}
                                             {!t.dispatchStatus && <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">CHƯA GIAO</span>}
                                         </td>
