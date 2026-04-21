@@ -42,10 +42,10 @@ export default async function handler(req, res) {
             }
         }
 
-        // 4. Update the old dispatch log → REJECTED
+        // 4. Update the old dispatch log → NO_RESPONSE / REVOKED
         if (activeLog) {
             await supabase.from('DispatchLogs').update({
-                responseStatus: 'REJECTED',
+                responseStatus: minutesElapsed > 30 ? 'NO_RESPONSE' : 'REVOKED_SYSTEM',
                 responseReason: reason,
                 respondedAt: new Date().toISOString()
             }).eq('id', activeLog.id);

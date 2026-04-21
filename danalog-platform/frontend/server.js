@@ -3002,6 +3002,21 @@ app.post('/api/dispatch/override', (req, res) => {
         const driver = (db.users || []).find(u => u.username === driverId);
         if (!driver) return res.status(404).json({ error: 'Driver not found' });
         
+        // Revoke the previous driver's assignment
+        if (ticket.assignedDriverId) {
+            const oldRespIdx = (db.driver_responses || []).findIndex(r => r.ticketId === ticketId && r.response === 'PENDING' && r.driverId === ticket.assignedDriverId);
+            if (oldRespIdx !== -1) {
+                const oldResp = db.driver_responses[oldRespIdx];
+                const elapsed = new Date().getTime() - new Date(oldResp.sentAt || ticket.assignedAt).getTime();
+                const newResponse = elapsed > 30 * 60000 ? 'NO_RESPONSE' : 'REVOKED_SYSTEM';
+                db.driver_responses[oldRespIdx] = {
+                    ...oldResp,
+                    response: newResponse,
+                    respondedAt: new Date().toISOString()
+                };
+            }
+        }
+
         const assignId = `AS-${ticketId}-${Date.now()}`;
         
         db.tickets[ticketIdx] = {

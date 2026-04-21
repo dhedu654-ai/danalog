@@ -578,11 +578,7 @@ function AppContent() {
             // Tickets & Correction requests
             if (relatedId.startsWith('CR-') && canViewCS) targetTab = 'ticket_corrections';
             else if (isDispatcher || isDVLead) {
-                if (message && message.includes('chưa phản hồi')) {
-                    targetTab = 'dispatch_responses';
-                } else {
-                    targetTab = 'dispatch_board';
-                }
+                targetTab = 'dispatch_board';
             }
             else if (user?.role === 'ADMIN') targetTab = 'cs_check'; // Admin better views full ticket in cs_check
             else if (user?.role === 'DRIVER') { /* handled in MobileDriverDashboard */ }
