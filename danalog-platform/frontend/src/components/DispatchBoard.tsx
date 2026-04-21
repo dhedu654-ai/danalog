@@ -877,7 +877,11 @@ export function DispatchBoard({ tickets, currentUser, onRefreshTickets, focusedT
                                                                 const newLogs = await api.getDispatchLogs();
                                                                 setLogs(newLogs);
                                                                 navigate(`${prefix}/board`);
-                                                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                                setTimeout(() => {
+                                                                    const t = tickets.find(tic => tic.id === r.ticketId);
+                                                                    if (t) handleSuggest(t);
+                                                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                                }, 50);
                                                             } catch (err: any) {
                                                                 alert('Gán lại thất bại: ' + (err?.message || 'Unknown error'));
                                                             }

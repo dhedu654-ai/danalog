@@ -143,8 +143,8 @@ export const HomeMobile: React.FC<HomeMobileProps> = ({ tickets, routeConfigs, c
     const activeTrip = tickets.find(t => 
         t.driverUsername === currentUser?.username && 
         (
-            ['DRIVER_ACCEPTED', 'DRIVER_ASSIGNED', 'ACCEPTED', 'ON_THE_WAY', 'IN_PROGRESS', 'ARRIVED', 'ĐANG VẬN CHUYỂN', 'ĐÃ ĐIỀU XE'].includes(t.status || '') ||
-            ['DRIVER_ACCEPTED', 'DRIVER_ASSIGNED', 'ACCEPTED', 'ON_THE_WAY', 'IN_PROGRESS', 'ARRIVED', 'ĐANG VẬN CHUYỂN', 'ĐÃ ĐIỀU XE'].includes(t.dispatchStatus || '')
+            ['DRIVER_ACCEPTED', 'ACCEPTED', 'ON_THE_WAY', 'IN_PROGRESS', 'ARRIVED', 'ĐANG VẬN CHUYỂN'].includes(t.status || '') ||
+            ['DRIVER_ACCEPTED', 'ACCEPTED', 'ON_THE_WAY', 'IN_PROGRESS', 'ARRIVED', 'ĐANG VẬN CHUYỂN'].includes(t.dispatchStatus || '')
         )
     );
 
@@ -231,7 +231,7 @@ export const HomeMobile: React.FC<HomeMobileProps> = ({ tickets, routeConfigs, c
                                 </div>
                             </div>
                             <div className="mt-4 pt-3 border-t border-blue-500/30 flex gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
-                                {((['DRIVER_ACCEPTED', 'ĐÃ ĐIỀU XE'].includes(activeTrip.dispatchStatus || '')) || (['DRIVER_ACCEPTED', 'ĐÃ ĐIỀU XE'].includes(activeTrip.status || ''))) && (
+                                {((['DRIVER_ACCEPTED'].includes(activeTrip.dispatchStatus || '')) || (['DRIVER_ACCEPTED'].includes(activeTrip.status || ''))) && (
                                     <button 
                                         disabled={respondingTo === activeTrip.id}
                                         onClick={() => handleUpdateStatus(activeTrip, 'IN_PROGRESS')}
