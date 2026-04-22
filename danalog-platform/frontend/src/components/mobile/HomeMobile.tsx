@@ -23,10 +23,14 @@ export const HomeMobile: React.FC<HomeMobileProps> = ({ tickets, routeConfigs, c
     const [loading, setLoading] = useState(true);
     const [editingTicket, setEditingTicket] = useState<TransportTicket | null>(null);
 
+    const onUpdateTicketsRef = useRef(onUpdateTickets);
+    useEffect(() => {
+        onUpdateTicketsRef.current = onUpdateTickets;
+    }, [onUpdateTickets]);
+
     const loadResponses = useCallback(async () => {
         try {
             const allResponses = await api.getDriverResponses();
-            // Filter: only mine
             const mine = allResponses.filter((r: any) => 
                 r.driverId === currentUser?.username && 
                 r.response !== 'REVOKED_SYSTEM'
@@ -34,17 +38,15 @@ export const HomeMobile: React.FC<HomeMobileProps> = ({ tickets, routeConfigs, c
             setPendingResponses(mine);
             
             // Also refresh tickets to get updated dispatchStatus
-            if (onUpdateTickets) {
+            if (onUpdateTicketsRef.current) {
                 const freshTickets = await api.getTickets({ username: currentUser?.username, role: currentUser?.role });
-                onUpdateTickets(freshTickets || []);
+                onUpdateTicketsRef.current(freshTickets || []);
             }
         } catch (err) {
             console.error('Failed to load responses/tickets:', err);
         }
         setLoading(false);
-    }, [currentUser, onUpdateTickets]);
-
-    useEffect(() => { 
+    }, [currentUser]);    useEffect(() => { 
         loadResponses(); 
         // Auto-refresh responses every 30 seconds
         const interval = setInterval(loadResponses, 30000);
