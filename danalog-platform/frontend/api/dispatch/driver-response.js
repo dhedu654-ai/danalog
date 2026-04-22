@@ -41,10 +41,11 @@ export default async function handler(req, res) {
         if (response === 'ACCEPT') {
             // Update dispatch log → ACCEPTED
             if (log) {
-                await supabase.from('DispatchLogs').update({ 
+                const { error: logErr } = await supabase.from('DispatchLogs').update({ 
                     responseStatus: 'ACCEPTED',
                     respondedAt: nowISO
                 }).eq('id', log.id);
+                if (logErr) throw new Error('Error updating log: ' + logErr.message);
             }
 
             // Add to status history
@@ -80,11 +81,12 @@ export default async function handler(req, res) {
 
             // Update dispatch log → REJECTED
             if (log) {
-                await supabase.from('DispatchLogs').update({ 
+                const { error: logErr } = await supabase.from('DispatchLogs').update({ 
                     responseStatus: 'REJECTED', 
-                    responseReason: rejectNote,
+                    reason: rejectNote,
                     respondedAt: nowISO
                 }).eq('id', log.id);
+                if (logErr) throw new Error('Error updating log: ' + logErr.message);
             }
 
             // Add to status history

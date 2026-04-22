@@ -44,22 +44,25 @@ export default async function handler(req, res) {
 
         // 4. Update the old dispatch log → NO_RESPONSE / REVOKED
         if (activeLog) {
-            await supabase.from('DispatchLogs').update({
+            const { error: logErr } = await supabase.from('DispatchLogs').update({
                 responseStatus: 'NO_RESPONSE',
-                responseReason: reason,
+                reason: reason,
                 respondedAt: new Date().toISOString()
             }).eq('id', activeLog.id);
+            if (logErr) throw new Error('Error updating active log: ' + logErr.message);
         }
 
         // Also revoke any other WAITING logs for this ticket
-        await supabase.from('DispatchLogs')
+        const { error: otherLogsErr } = await supabase.from('DispatchLogs')
             .update({
                 responseStatus: 'NO_RESPONSE',
-                responseReason: 'Hệ thống thu hồi do điều vận gán lại',
+                reason: 'Hệ thống thu hồi do điều vận gán lại',
                 respondedAt: new Date().toISOString()
             })
             .eq('ticketId', ticketId)
             .eq('responseStatus', 'WAITING');
+        
+        if (otherLogsErr) throw new Error('Error updating other logs: ' + otherLogsErr.message);
 
         // 5. Reset the ticket back to WAITING_DISPATCH
         let newStatusHist = ticket.statusHistory || [];
