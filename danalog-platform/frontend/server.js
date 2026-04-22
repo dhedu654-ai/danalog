@@ -2887,6 +2887,101 @@ app.post('/api/dispatch/suggest', (req, res) => {
     }
 });
 
+// POST /api/dispatch/reassign - Reassign driver for a ticket
+app.post('/api/dispatch/reassign', (req, res) => {
+    try {
+        const { ticketId, dispatcherUsername } = req.body;
+        const db = readDb();
+        
+        const ticketIdx = (db.tickets || []).findIndex(t => t.id === ticketId);
+        if (ticketIdx === -1) {
+            return res.status(404).json({ error: 'Ticket not found' });
+        }
+        
+        const ticket = db.tickets[ticketIdx];
+        
+        // 1. Find the latest active dispatch log (WAITING status)
+        const ticketLogs = (db.dispatchLogs || []).filter(l => l.ticketId === ticketId && l.responseStatus === 'WAITING');
+        // Sort by timestamp descending
+        ticketLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        const activeLog = ticketLogs.length > 0 ? ticketLogs[0] : null;
+        
+        // 2. Calculate time elapsed
+        let reason = 'DV điều lại xe';
+        let minutesElapsed = 0;
+        
+        if (activeLog && activeLog.timestamp) {
+            const sentTime = new Date(activeLog.timestamp).getTime();
+            const now = new Date().getTime();
+            minutesElapsed = Math.floor((now - sentTime) / (1000 * 60));
+            if (minutesElapsed > 30) {
+                reason = 'Không phản hồi';
+            }
+        }
+        
+        // 3. Update the old dispatch logs -> NO_RESPONSE
+        (db.dispatchLogs || []).forEach(log => {
+            if (log.ticketId === ticketId && log.responseStatus === 'WAITING') {
+                log.responseStatus = 'NO_RESPONSE';
+                log.responseReason = reason;
+                log.respondedAt = new Date().toISOString();
+            }
+        });
+        
+        // 4. Reset ticket to WAITING_DISPATCH
+        let newStatusHist = ticket.statusHistory || [];
+        if (typeof newStatusHist === 'string') {
+            try { newStatusHist = JSON.parse(newStatusHist); } catch { newStatusHist = []; }
+        }
+        
+        newStatusHist.push({
+            status: 'WAITING_DISPATCH',
+            action: `Gán lại — ${reason} (${minutesElapsed} phút)`,
+            actor: dispatcherUsername || 'system',
+            user: dispatcherUsername || 'system',
+            previousDriver: ticket.driverUsername || null,
+            previousDriverName: ticket.driverName || null,
+            timestamp: new Date().toISOString()
+        });
+        
+        const previousDriverName = ticket.driverName || 'N/A';
+        const previousDriverUsername = ticket.assignedDriverId || ticket.driverUsername;
+
+        db.tickets[ticketIdx] = {
+            ...ticket,
+            driverUsername: null,
+            assignedDriverId: null,
+            assignedDriverName: null,
+            driverName: null,
+            licensePlate: null,
+            status: 'CHƯA ĐIỀU XE',
+            dispatchStatus: 'WAITING_DISPATCH',
+            statusHistory: newStatusHist,
+            dispatchVersion: (ticket.dispatchVersion || 0) + 1,
+            updatedAt: new Date().toISOString()
+        };
+        
+        // 5. Notify
+        notify(db, 'DISPATCHER', `Phiếu ${ticketId.slice(-8)} đã được gán lại. Lý do: ${reason}. LX trước: ${previousDriverName}`, 'WARNING', ticketId);
+        if (previousDriverUsername) {
+            notify(db, previousDriverUsername, `Lệnh ${ticketId.slice(-8)} (${ticket.route || ''}) đã bị thu hồi. Lý do: ${reason}`, 'WARNING', ticketId);
+        }
+        
+        writeDb(db);
+        
+        res.json({
+            success: true,
+            ticketId,
+            reason,
+            minutesElapsed,
+            previousDriver: previousDriverName
+        });
+    } catch (err) {
+        console.error('Dispatch reassign error:', err);
+        res.status(500).json({ error: 'Dispatch reassign error' });
+    }
+});
+
 // POST /api/dispatch/assign - Assign driver (manual, ai_suggested, auto) with optimistic lock
 app.post('/api/dispatch/assign', (req, res) => {
     try {

@@ -60,7 +60,7 @@ function ScoreBar({ label, value, max = 100 }: { label: string, value: number, m
 export function DispatchBoard({ tickets, currentUser, onRefreshTickets, focusedTicketId, onClearFocus, activeSubPage }: DispatchBoardProps) {
     const navigate = useNavigate();
     const location = useLocation();
-    const prefix = location.pathname.startsWith('/kt') ? '/kt' : '/dispatch';
+    const prefix = location.pathname.startsWith('/admin') ? '/admin' : location.pathname.startsWith('/kt') ? '/kt' : '/dispatch';
 
     const [selectedTicket, setSelectedTicket] = useState<TransportTicket | null>(null);
     const [candidates, setCandidates] = useState<DispatchCandidate[]>([]);
@@ -250,6 +250,22 @@ export function DispatchBoard({ tickets, currentUser, onRefreshTickets, focusedT
             }
         }
     }, [focusedTicketId, tickets, handleSuggest, onClearFocus]);
+
+    // Handle auto-select from location state (e.g. after reassign)
+    useEffect(() => {
+        const state = location.state as { autoSelectTicketId?: string };
+        if (state?.autoSelectTicketId && tickets.length > 0) {
+            const targetTicket = tickets.find(t => t.id === state.autoSelectTicketId);
+            if (targetTicket) {
+                // We use a small timeout to ensure the UI has transitioned to 'board' tab before suggesting
+                setTimeout(() => {
+                    handleSuggest(targetTicket);
+                    // Clear the state so it doesn't trigger again on normal navigation
+                    window.history.replaceState({}, document.title);
+                }, 100);
+            }
+        }
+    }, [location.state, tickets, handleSuggest]);
 
     // Assign driver 
     const handleAssign = useCallback(async (driverId: string, type: 'manual' | 'auto' | 'ai_suggested' | 'override' = 'manual') => {
@@ -876,12 +892,8 @@ export function DispatchBoard({ tickets, currentUser, onRefreshTickets, focusedT
                                                                 setResponses(newResponses);
                                                                 const newLogs = await api.getDispatchLogs();
                                                                 setLogs(newLogs);
-                                                                navigate(`${prefix}/board`);
-                                                                setTimeout(() => {
-                                                                    const t = tickets.find(tic => tic.id === r.ticketId);
-                                                                    if (t) handleSuggest(t);
-                                                                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                                                                }, 50);
+                                                                navigate(`${prefix}/board`, { state: { autoSelectTicketId: r.ticketId } });
+                                                                window.scrollTo({ top: 0, behavior: 'smooth' });
                                                             } catch (err: any) {
                                                                 alert('Gán lại thất bại: ' + (err?.message || 'Unknown error'));
                                                             }
