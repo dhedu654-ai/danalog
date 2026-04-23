@@ -37,8 +37,7 @@ interface DriversalarySheet {
     trips: number;
 }
 export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, users, onNotifySalary, onBulkNotifySalary, currentUser }: DriverSalaryTableProps) {
-    const [selectedMonths, setSelectedMonths] = useState<number[]>([new Date().getMonth() + 1]);
-    const [isMonthDropdownOpen, setIsMonthDropdownOpen] = useState(false);
+    const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [selectedDriver, setSelectedDriver] = useState('');
     const [expandedDrivers, setExpandedDrivers] = useState<string[]>([]);
@@ -51,14 +50,14 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
             
             const date = new Date(t.dateEnd);
             // Month Filter
-            if (selectedMonths.length > 0 && !selectedMonths.includes(date.getMonth() + 1)) return false;
+            if (selectedMonth !== 0 && date.getMonth() + 1 !== selectedMonth) return false;
 
             // Year Filter (0 = All)
             if (selectedYear !== 0 && date.getFullYear() !== selectedYear) return false;
 
             return true;
         });
-    }, [tickets, selectedMonths, selectedYear]);
+    }, [tickets, selectedMonth, selectedYear]);
 
     // Get unique drivers from the filtered tickets (or all tickets if desired, but contextual usage suggests relevant drivers)
     const uniqueDrivers = useMemo(() => {
@@ -225,7 +224,7 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
                 items,
                 totalQuantity,
                 totalSalary,
-                months: selectedMonths,
+                months: selectedMonth === 0 ? [] : [selectedMonth],
                 year: selectedYear,
                 trips: driverTickets.length
             });
@@ -236,7 +235,7 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
             const matchesDriver = selectedDriver ? s.driverName === selectedDriver : true;
             return matchesDriver;
         });
-    }, [filteredTickets, selectedDriver, selectedMonths, selectedYear]);
+    }, [filteredTickets, selectedDriver, selectedMonth, selectedYear]);
 
     // Toggle Expand
     const toggleExpand = (driverName: string) => {
@@ -439,7 +438,7 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
 
     const handleBulkExport = () => {
         // Require BOTH month AND year to be selected
-        if (selectedMonths.length === 0 || selectedYear === 0) {
+        if (selectedMonth === 0 || selectedYear === 0) {
             alert('Vui lòng chọn cả Tháng và Năm để xuất bảng kê lương.');
             return;
         }
@@ -457,7 +456,7 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
                 addDriverSheet(wb, sheet);
             });
 
-            XLSX.writeFile(wb, `Bang_Ke_Luong_Thang_${selectedMonths.join('_')}_${selectedYear}.xlsx`);
+            XLSX.writeFile(wb, `Bang_Ke_Luong_Thang_${selectedMonth}_${selectedYear}.xlsx`);
 
             setTimeout(() => {
                 alert(`Đã xuất bảng lương cho ${salarySheets.length} lái xe.`);
@@ -472,7 +471,7 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
     };
 
     const handleBulkAction = (action: 'SEND_TO_ACCOUNTANT' | 'APPROVE_ACCOUNTANT' | 'REJECT_ACCOUNTANT' | 'PUBLISH_TO_DRIVER') => {
-        if (selectedMonths.length !== 1 || selectedYear === 0) {
+        if (selectedMonth === 0 || selectedYear === 0) {
             alert('Vui lòng chọn 1 tháng duy nhất qua bộ lọc để thao tác hàng loạt.');
             return;
         }
@@ -483,7 +482,7 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
 
         let reason = '';
         if (action === 'REJECT_ACCOUNTANT') {
-            const r = window.prompt(`Vui lòng nhập lý do từ chối bảng lương tháng ${selectedMonths[0]}/${selectedYear} của ${salarySheets.length} lái xe:`);
+            const r = window.prompt(`Vui lòng nhập lý do từ chối bảng lương tháng ${selectedMonth}/${selectedYear} của ${salarySheets.length} lái xe:`);
             if (r === null) return; // Cancelled
             if (!r.trim()) {
                 alert('Phải nhập lý do từ chối.');
@@ -493,14 +492,14 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
         } else {
             const verb = action === 'SEND_TO_ACCOUNTANT' ? 'TÁI KIỂM & GỬI' : action === 'APPROVE_ACCOUNTANT' ? 'DUYỆT' : 'GỬI (CÔNG BỐ) CHO';
             const confirmMsg = action === 'SEND_TO_ACCOUNTANT' 
-                ? `Bạn có chắc chắn muốn gửi bảng lương tháng ${selectedMonths[0]}/${selectedYear} của TẤT CẢ ${salarySheets.length} CÁ NHÂN hiển thị lên Kế Toán?`
-                : `Bạn có chắc chắn muốn ${verb} TẤT CẢ bảng lương tháng ${selectedMonths[0]}/${selectedYear} của ${salarySheets.length} LÁI XE hiển thị?`;
+                ? `Bạn có chắc chắn muốn gửi bảng lương tháng ${selectedMonth}/${selectedYear} của TẤT CẢ ${salarySheets.length} CÁ NHÂN hiển thị lên Kế Toán?`
+                : `Bạn có chắc chắn muốn ${verb} TẤT CẢ bảng lương tháng ${selectedMonth}/${selectedYear} của ${salarySheets.length} LÁI XE hiển thị?`;
 
             if (!window.confirm(confirmMsg)) return;
         }
 
         const driverUsernames = salarySheets.map(s => s.driverUsername);
-        onBulkNotifySalary(driverUsernames, selectedMonths[0], selectedYear, action, reason);
+        onBulkNotifySalary(driverUsernames, selectedMonth, selectedYear, action, reason);
     };
 
 
@@ -518,35 +517,16 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
                     <span className="font-bold text-xs uppercase">Kỳ thanh toán</span>
                 </div>
 
-                <div className="relative">
-                    <div 
-                        className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 cursor-pointer flex items-center justify-between min-w-[140px]"
-                        onClick={() => setIsMonthDropdownOpen(!isMonthDropdownOpen)}
-                    >
-                        <span>{selectedMonths.length === 0 ? 'Tất cả tháng' : `Tháng ${selectedMonths.join(', ')}`}</span>
-                    </div>
-                    {isMonthDropdownOpen && (
-                        <>
-                            <div className="fixed inset-0 z-10" onClick={() => setIsMonthDropdownOpen(false)}></div>
-                            <div className="absolute top-full mt-1 left-0 min-w-[220px] bg-white border border-slate-200 shadow-xl rounded-xl z-20 p-3 grid grid-cols-3 gap-2 max-h-60 overflow-y-auto">
-                                {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                                    <label key={m} className={`flex items-center justify-center p-2 cursor-pointer rounded-lg transition-colors border ${selectedMonths.includes(m) ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 hover:bg-slate-50 text-slate-700'}`}>
-                                        <input 
-                                            type="checkbox" 
-                                            className="hidden"
-                                            checked={selectedMonths.includes(m)}
-                                            onChange={(e) => {
-                                                if (e.target.checked) setSelectedMonths(prev => [...prev, m].sort((a,b)=>a-b));
-                                                else setSelectedMonths(prev => prev.filter(x => x !== m));
-                                            }}
-                                        />
-                                        <span className="text-sm font-semibold mx-auto">T {m}</span>
-                                    </label>
-                                ))}
-                            </div>
-                        </>
-                    )}
-                </div>
+                <select
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                    className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 outline-none cursor-pointer focus:ring-2 focus:ring-blue-500 min-w-[140px]"
+                >
+                    <option value={0}>Tất cả tháng</option>
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                        <option key={m} value={m}>Tháng {m}</option>
+                    ))}
+                </select>
 
                 <select
                     value={selectedYear}
@@ -554,10 +534,9 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
                     className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 outline-none cursor-pointer focus:ring-2 focus:ring-blue-500"
                 >
                     <option value={0}>Tất cả năm</option>
-                    {[...Array(5)].map((_, i) => {
-                        const year = new Date().getFullYear() - 2 + i;
-                        return <option key={year} value={year}>{year}</option>;
-                    })}
+                    {[2023, 2024, 2025, 2026].map(y => (
+                        <option key={y} value={y}>{y}</option>
+                    ))}
                 </select>
 
                 <div className="relative">
@@ -672,12 +651,10 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
                                             const isAccountant = role === 'ACCOUNTANT' || role === 'ADMIN';
                                             
                                             // Get statuses for selected months
-                                            const statuses = selectedMonths.map(m => {
-                                                const ps = publishedSalaries.find(p => p.driverUsername === sheet.driverUsername && p.month === m && p.year === selectedYear);
-                                                return ps?.status;
-                                            });
+                                            const ps = publishedSalaries.find(p => p.driverUsername === sheet.driverUsername && p.month === selectedMonth && p.year === selectedYear);
+                                            const statuses = ps ? [ps.status] : [undefined];
                                             
-                                            if (selectedMonths.length === 0) return null;
+                                            if (selectedMonth === 0) return null;
                                             
                                             const allApproved = statuses.every(s => s === 'APPROVED_ACCOUNTANT');
                                             const anyRejected = statuses.some(s => s === 'REJECTED_ACCOUNTANT');
@@ -702,7 +679,7 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 if (onNotifySalary) {
-                                                                    selectedMonths.forEach(m => onNotifySalary(sheet.driverUsername, m, selectedYear, 'SEND_TO_ACCOUNTANT'));
+                                                                    onNotifySalary(sheet.driverUsername, selectedMonth, selectedYear, 'SEND_TO_ACCOUNTANT');
                                                                 }
                                                             }}
                                                             className={`flex items-center justify-center w-8 h-8 rounded-full text-xs transition-all shadow-sm ${!anyUnsent ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow'}`}
@@ -719,7 +696,7 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     if (onNotifySalary) {
-                                                                        selectedMonths.forEach(m => onNotifySalary(sheet.driverUsername, m, selectedYear, 'APPROVE_ACCOUNTANT'));
+                                                                        onNotifySalary(sheet.driverUsername, selectedMonth, selectedYear, 'APPROVE_ACCOUNTANT');
                                                                     }
                                                                 }}
                                                                 className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-600 text-white hover:bg-emerald-700 transition-all shadow-sm hover:shadow"
@@ -734,7 +711,7 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
                                                                     if (r === null) return;
                                                                     if (!r.trim()) { alert('Phải nhập lý do'); return; }
                                                                     if (onNotifySalary) {
-                                                                        selectedMonths.forEach(m => onNotifySalary(sheet.driverUsername, m, selectedYear, 'REJECT_ACCOUNTANT', r));
+                                                                        onNotifySalary(sheet.driverUsername, selectedMonth, selectedYear, 'REJECT_ACCOUNTANT', r);
                                                                     }
                                                                 }}
                                                                 className="flex items-center justify-center w-8 h-8 rounded-full bg-red-500 text-white hover:bg-red-600 transition-all shadow-sm hover:shadow"
@@ -750,7 +727,7 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 if (onNotifySalary) {
-                                                                    selectedMonths.forEach(m => onNotifySalary(sheet.driverUsername, m, selectedYear, 'PUBLISH_TO_DRIVER'));
+                                                                    onNotifySalary(sheet.driverUsername, selectedMonth, selectedYear, 'PUBLISH_TO_DRIVER');
                                                                 }
                                                             }}
                                                             className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-sm hover:shadow"
