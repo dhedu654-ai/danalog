@@ -26,18 +26,27 @@ interface SalaryItem {
     note: string;
 }
 
+interface MonthlySalarySheet {
+    month: number;
+    items: SalaryItem[];
+    totalQuantity: number;
+    totalSalary: number;
+    trips: number;
+}
+
 interface DriversalarySheet {
     driverName: string;
     driverUsername: string;
-    items: SalaryItem[];
     totalQuantity: number;
     totalSalary: number;
     months: number[];
     year: number;
     trips: number;
+    monthlySheets: MonthlySalarySheet[];
 }
 export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, users, onNotifySalary, onBulkNotifySalary, currentUser }: DriverSalaryTableProps) {
-    const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
+    const [selectedMonths, setSelectedMonths] = useState<number[]>([new Date().getMonth() + 1]);
+    const [isMonthDropdownOpen, setIsMonthDropdownOpen] = useState(false);
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [selectedDriver, setSelectedDriver] = useState('');
     const [expandedDrivers, setExpandedDrivers] = useState<string[]>([]);
@@ -50,14 +59,14 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
             
             const date = new Date(t.dateEnd);
             // Month Filter
-            if (selectedMonth !== 0 && date.getMonth() + 1 !== selectedMonth) return false;
+            if (selectedMonths.length > 0 && !selectedMonths.includes(date.getMonth() + 1)) return false;
 
             // Year Filter (0 = All)
             if (selectedYear !== 0 && date.getFullYear() !== selectedYear) return false;
 
             return true;
         });
-    }, [tickets, selectedMonth, selectedYear]);
+    }, [tickets, selectedMonths, selectedYear]);
 
     // Get unique drivers from the filtered tickets (or all tickets if desired, but contextual usage suggests relevant drivers)
     const uniqueDrivers = useMemo(() => {
@@ -80,9 +89,23 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
         // Process each driver's tickets into Aggegrated Lines
         Object.keys(driverMap).forEach(driverName => {
             const driverTickets = driverMap[driverName];
-            const itemMap: Record<string, SalaryItem> = {};
+            
+            // Determine which months to process for this driver
+            const monthsToProcess = selectedMonths.length > 0 
+                ? selectedMonths 
+                : Array.from(new Set(driverTickets.map(t => new Date(t.dateEnd || t.dateStart).getMonth() + 1))).sort((a,b)=>a-b);
 
-            driverTickets.forEach(t => {
+            const monthlySheets: MonthlySalarySheet[] = [];
+            let grandTotalQuantity = 0;
+            let grandTotalSalary = 0;
+
+            monthsToProcess.forEach(month => {
+                const monthTickets = driverTickets.filter(t => new Date(t.dateEnd || t.dateStart).getMonth() + 1 === month);
+                if (monthTickets.length === 0) return;
+
+                const itemMap: Record<string, SalaryItem> = {};
+
+                monthTickets.forEach(t => {
                 // 1. PRIMARY ITEM (The Transport Trip)
                 // Logic to deduce "Cargo Name" and "Unit" from Ticket Data
                 let cargoName = "V/c cont";
@@ -205,14 +228,26 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
                         }
                     }
                 }
-            });
+                }); // End of monthTickets.forEach
 
-            const items = Object.values(itemMap);
-            // Sort items by Cargo Name for better readability
-            items.sort((a, b) => a.cargoName.localeCompare(b.cargoName));
+                const items = Object.values(itemMap);
+                // Sort items by Cargo Name for better readability
+                items.sort((a, b) => a.cargoName.localeCompare(b.cargoName));
 
-            const totalSalary = items.reduce((sum, item) => sum + item.total, 0);
-            const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+                const totalSalary = items.reduce((sum, item) => sum + item.total, 0);
+                const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+
+                monthlySheets.push({
+                    month,
+                    items,
+                    totalQuantity,
+                    totalSalary,
+                    trips: monthTickets.length
+                });
+
+                grandTotalQuantity += totalQuantity;
+                grandTotalSalary += totalSalary;
+            }); // End of monthsToProcess.forEach
 
             // Find the unique username for this driver name
             const driverInfo = users.find(u => u.name === driverName);
@@ -221,12 +256,12 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
             sheets.push({
                 driverName,
                 driverUsername,
-                items,
-                totalQuantity,
-                totalSalary,
-                months: selectedMonth === 0 ? [] : [selectedMonth],
+                totalQuantity: grandTotalQuantity,
+                totalSalary: grandTotalSalary,
+                months: selectedMonths,
                 year: selectedYear,
-                trips: driverTickets.length
+                trips: driverTickets.length,
+                monthlySheets
             });
         });
 
@@ -235,7 +270,7 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
             const matchesDriver = selectedDriver ? s.driverName === selectedDriver : true;
             return matchesDriver;
         });
-    }, [filteredTickets, selectedDriver, selectedMonth, selectedYear]);
+    }, [filteredTickets, selectedDriver, selectedMonths, selectedYear]);
 
     // Toggle Expand
     const toggleExpand = (driverName: string) => {
@@ -438,7 +473,7 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
 
     const handleBulkExport = () => {
         // Require BOTH month AND year to be selected
-        if (selectedMonth === 0 || selectedYear === 0) {
+        if (selectedMonths.length === 0 || selectedYear === 0) {
             alert('Vui lòng chọn cả Tháng và Năm để xuất bảng kê lương.');
             return;
         }
@@ -456,7 +491,7 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
                 addDriverSheet(wb, sheet);
             });
 
-            XLSX.writeFile(wb, `Bang_Ke_Luong_Thang_${selectedMonth}_${selectedYear}.xlsx`);
+            XLSX.writeFile(wb, `Bang_Ke_Luong_Thang_${selectedMonths.join('_')}_${selectedYear}.xlsx`);
 
             setTimeout(() => {
                 alert(`Đã xuất bảng lương cho ${salarySheets.length} lái xe.`);
@@ -471,7 +506,7 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
     };
 
     const handleBulkAction = (action: 'SEND_TO_ACCOUNTANT' | 'APPROVE_ACCOUNTANT' | 'REJECT_ACCOUNTANT' | 'PUBLISH_TO_DRIVER') => {
-        if (selectedMonth === 0 || selectedYear === 0) {
+        if (selectedMonths.length !== 1 || selectedYear === 0) {
             alert('Vui lòng chọn 1 tháng duy nhất qua bộ lọc để thao tác hàng loạt.');
             return;
         }
@@ -482,7 +517,7 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
 
         let reason = '';
         if (action === 'REJECT_ACCOUNTANT') {
-            const r = window.prompt(`Vui lòng nhập lý do từ chối bảng lương tháng ${selectedMonth}/${selectedYear} của ${salarySheets.length} lái xe:`);
+            const r = window.prompt(`Vui lòng nhập lý do từ chối bảng lương tháng ${selectedMonths[0]}/${selectedYear} của ${salarySheets.length} lái xe:`);
             if (r === null) return; // Cancelled
             if (!r.trim()) {
                 alert('Phải nhập lý do từ chối.');
@@ -490,16 +525,16 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
             }
             reason = r;
         } else {
-            const verb = action === 'SEND_TO_ACCOUNTANT' ? 'TÁI KIỂM & GỬI' : action === 'APPROVE_ACCOUNTANT' ? 'DUYỆT' : 'GỬI (CÔNG BỐ) CHO';
+            const verb = action === 'SEND_TO_ACCOUNTANT' ? 'TÁI KIỂM & GỬi' : action === 'APPROVE_ACCOUNTANT' ? 'DUYỆT' : 'GỬi (CÔNG BỐ) CHO';
             const confirmMsg = action === 'SEND_TO_ACCOUNTANT' 
-                ? `Bạn có chắc chắn muốn gửi bảng lương tháng ${selectedMonth}/${selectedYear} của TẤT CẢ ${salarySheets.length} CÁ NHÂN hiển thị lên Kế Toán?`
-                : `Bạn có chắc chắn muốn ${verb} TẤT CẢ bảng lương tháng ${selectedMonth}/${selectedYear} của ${salarySheets.length} LÁI XE hiển thị?`;
+                ? `Bạn có chắc chắn muốn gửi bảng lương tháng ${selectedMonths[0]}/${selectedYear} của TẤT CẢ ${salarySheets.length} CÁ NHÂN hiển thị lên Kế Toán?`
+                : `Bạn có chắc chắn muốn ${verb} TẤT CẢ bảng lương tháng ${selectedMonths[0]}/${selectedYear} của ${salarySheets.length} LÁI XE hiển thị?`;
 
             if (!window.confirm(confirmMsg)) return;
         }
 
         const driverUsernames = salarySheets.map(s => s.driverUsername);
-        onBulkNotifySalary(driverUsernames, selectedMonth, selectedYear, action, reason);
+        onBulkNotifySalary(driverUsernames, selectedMonths[0], selectedYear, action, reason);
     };
 
 
@@ -517,16 +552,42 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
                     <span className="font-bold text-xs uppercase">Kỳ thanh toán</span>
                 </div>
 
-                <select
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                    className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 outline-none cursor-pointer focus:ring-2 focus:ring-blue-500 min-w-[140px]"
-                >
-                    <option value={0}>Tất cả tháng</option>
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                        <option key={m} value={m}>Tháng {m}</option>
-                    ))}
-                </select>
+                <div className="relative">
+                    <div 
+                        className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 cursor-pointer flex items-center justify-between min-w-[140px] hover:bg-slate-100 transition-colors"
+                        onClick={() => setIsMonthDropdownOpen(!isMonthDropdownOpen)}
+                    >
+                        <span>{selectedMonths.length === 0 ? 'Tất cả tháng' : `Tháng ${selectedMonths.join(', ')}`}</span>
+                        <ChevronRight size={14} className={`ml-2 transition-transform ${isMonthDropdownOpen ? 'rotate-90' : ''}`} />
+                    </div>
+                    {isMonthDropdownOpen && (
+                        <>
+                            <div className="fixed inset-0 z-10" onClick={() => setIsMonthDropdownOpen(false)}></div>
+                            <div className="absolute top-full mt-1 left-0 w-[160px] bg-white border border-slate-200 shadow-xl rounded-xl z-20 p-2 flex flex-col gap-1 max-h-72 overflow-y-auto">
+                                <label
+                                    className={`flex items-center gap-2 px-3 py-2 cursor-pointer rounded-lg transition-colors border ${selectedMonths.length === 0 ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-transparent hover:bg-slate-50 text-slate-600'}`}
+                                    onClick={() => setSelectedMonths([])}
+                                >
+                                    <span className="text-sm font-semibold">Tất cả tháng</span>
+                                </label>
+                                {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                                    <label key={m} className={`flex items-center gap-2 px-3 py-2 cursor-pointer rounded-lg transition-colors border ${selectedMonths.includes(m) ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-transparent hover:bg-slate-50 text-slate-600'}`}>
+                                        <input 
+                                            type="checkbox" 
+                                            className="hidden"
+                                            checked={selectedMonths.includes(m)}
+                                            onChange={(e) => {
+                                                if (e.target.checked) setSelectedMonths(prev => [...prev, m].sort((a,b)=>a-b));
+                                                else setSelectedMonths(prev => prev.filter(x => x !== m));
+                                            }}
+                                        />
+                                        <span className="text-sm font-semibold">Tháng {m}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </>
+                    )}
+                </div>
 
                 <select
                     value={selectedYear}
@@ -651,10 +712,12 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
                                             const isAccountant = role === 'ACCOUNTANT' || role === 'ADMIN';
                                             
                                             // Get statuses for selected months
-                                            const ps = publishedSalaries.find(p => p.driverUsername === sheet.driverUsername && p.month === selectedMonth && p.year === selectedYear);
-                                            const statuses = ps ? [ps.status] : [undefined];
+                                            const statuses = selectedMonths.map(m => {
+                                                const ps = publishedSalaries.find(p => p.driverUsername === sheet.driverUsername && p.month === m && p.year === selectedYear);
+                                                return ps?.status;
+                                            });
                                             
-                                            if (selectedMonth === 0) return null;
+                                            if (selectedMonths.length === 0) return null;
                                             
                                             const allApproved = statuses.every(s => s === 'APPROVED_ACCOUNTANT');
                                             const anyRejected = statuses.some(s => s === 'REJECTED_ACCOUNTANT');
@@ -679,7 +742,7 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 if (onNotifySalary) {
-                                                                    onNotifySalary(sheet.driverUsername, selectedMonth, selectedYear, 'SEND_TO_ACCOUNTANT');
+                                                                    selectedMonths.forEach(m => onNotifySalary(sheet.driverUsername, m, selectedYear, 'SEND_TO_ACCOUNTANT'));
                                                                 }
                                                             }}
                                                             className={`flex items-center justify-center w-8 h-8 rounded-full text-xs transition-all shadow-sm ${!anyUnsent ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow'}`}
@@ -696,7 +759,7 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     if (onNotifySalary) {
-                                                                        onNotifySalary(sheet.driverUsername, selectedMonth, selectedYear, 'APPROVE_ACCOUNTANT');
+                                                                        selectedMonths.forEach(m => onNotifySalary(sheet.driverUsername, m, selectedYear, 'APPROVE_ACCOUNTANT'));
                                                                     }
                                                                 }}
                                                                 className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-600 text-white hover:bg-emerald-700 transition-all shadow-sm hover:shadow"
@@ -711,7 +774,7 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
                                                                     if (r === null) return;
                                                                     if (!r.trim()) { alert('Phải nhập lý do'); return; }
                                                                     if (onNotifySalary) {
-                                                                        onNotifySalary(sheet.driverUsername, selectedMonth, selectedYear, 'REJECT_ACCOUNTANT', r);
+                                                                        selectedMonths.forEach(m => onNotifySalary(sheet.driverUsername, m, selectedYear, 'REJECT_ACCOUNTANT', r));
                                                                     }
                                                                 }}
                                                                 className="flex items-center justify-center w-8 h-8 rounded-full bg-red-500 text-white hover:bg-red-600 transition-all shadow-sm hover:shadow"
@@ -727,7 +790,7 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 if (onNotifySalary) {
-                                                                    onNotifySalary(sheet.driverUsername, selectedMonth, selectedYear, 'PUBLISH_TO_DRIVER');
+                                                                    selectedMonths.forEach(m => onNotifySalary(sheet.driverUsername, m, selectedYear, 'PUBLISH_TO_DRIVER'));
                                                                 }
                                                             }}
                                                             className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-sm hover:shadow"
@@ -752,47 +815,53 @@ export function DriverSalaryTable({ tickets, routeConfigs, publishedSalaries, us
 
                                 {/* Aggregated Detail Table */}
                                 {expandedDrivers.includes(sheet.driverName) && (
-                                    <div className="bg-white border-t border-slate-100 p-6 animate-in slide-in-from-top-2 duration-200">
-                                        <div className="border border-slate-200 rounded-lg overflow-hidden">
-                                            <table className="w-full text-sm text-left">
-                                                <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
-                                                    <tr>
-                                                        <th className="px-4 py-3 border-r border-slate-200">STT</th>
-                                                        <th className="px-4 py-3 border-r border-slate-200">Tên hàng</th>
-                                                        <th className="px-4 py-3 border-r border-slate-200 w-1/3">Nội dung</th>
-                                                        <th className="px-4 py-3 border-r border-slate-200 text-center">ĐVT</th>
-                                                        <th className="px-4 py-3 border-r border-slate-200 text-center">Số lượng</th>
-                                                        <th className="px-4 py-3 border-r border-slate-200 text-right">Đơn giá tiền lương</th>
-                                                        <th className="px-4 py-3 border-r border-slate-200 text-right">Tổng lương</th>
-                                                        <th className="px-4 py-3">Ghi chú</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-slate-200">
-                                                    {sheet.items.map((item, index) => (
-                                                        <tr key={item.id} className="hover:bg-slate-50">
-                                                            <td className="px-4 py-3 text-center text-slate-500 border-r border-slate-200">{index + 1}</td>
-                                                            <td className="px-4 py-3 font-medium text-slate-700 border-r border-slate-200">{item.cargoName}</td>
-                                                            <td className="px-4 py-3 text-slate-600 border-r border-slate-200">{item.content}</td>
-                                                            <td className="px-4 py-3 text-center text-slate-500 border-r border-slate-200">{item.unit}</td>
-                                                            <td className="px-4 py-3 text-center font-bold text-slate-700 border-r border-slate-200">{item.quantity}</td>
-                                                            <td className="px-4 py-3 text-right text-slate-600 border-r border-slate-200">{item.unitPrice.toLocaleString()}</td>
-                                                            <td className="px-4 py-3 text-right font-bold text-emerald-600 border-r border-slate-200">{item.total.toLocaleString()}</td>
-                                                            <td className="px-4 py-3 text-slate-500 italic">{item.note}</td>
+                                    <div className="bg-slate-50 border-t border-slate-100 p-6 animate-in slide-in-from-top-2 duration-200 flex flex-col gap-6">
+                                        {sheet.monthlySheets.map(mSheet => (
+                                            <div key={mSheet.month} className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
+                                                <div className="bg-slate-100 px-4 py-2 border-b border-slate-200 flex items-center justify-between">
+                                                    <h4 className="font-bold text-slate-700">Tháng {mSheet.month}/{sheet.year}</h4>
+                                                    <span className="text-xs font-bold text-slate-500">{mSheet.trips} phiếu • {mSheet.totalQuantity} chuyến/đêm</span>
+                                                </div>
+                                                <table className="w-full text-sm text-left">
+                                                    <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+                                                        <tr>
+                                                            <th className="px-4 py-3 border-r border-slate-200 w-12 text-center">STT</th>
+                                                            <th className="px-4 py-3 border-r border-slate-200">Tên hàng</th>
+                                                            <th className="px-4 py-3 border-r border-slate-200 w-1/3">Nội dung</th>
+                                                            <th className="px-4 py-3 border-r border-slate-200 text-center">ĐVT</th>
+                                                            <th className="px-4 py-3 border-r border-slate-200 text-center w-24">Số lượng</th>
+                                                            <th className="px-4 py-3 border-r border-slate-200 text-right w-36">Đơn giá tiền lương</th>
+                                                            <th className="px-4 py-3 border-r border-slate-200 text-right w-36">Tổng lương</th>
+                                                            <th className="px-4 py-3">Ghi chú</th>
                                                         </tr>
-                                                    ))}
-                                                    <tr className="bg-slate-50 font-bold text-slate-800">
-                                                        <td className="px-4 py-3 text-center border-r border-slate-200"></td>
-                                                        <td className="px-4 py-3 border-r border-slate-200">Cộng</td>
-                                                        <td className="px-4 py-3 border-r border-slate-200"></td>
-                                                        <td className="px-4 py-3 border-r border-slate-200"></td>
-                                                        <td className="px-4 py-3 text-center border-r border-slate-200">{sheet.totalQuantity}</td>
-                                                        <td className="px-4 py-3 text-right border-r border-slate-200"></td>
-                                                        <td className="px-4 py-3 text-right text-emerald-700 border-r border-slate-200">{sheet.totalSalary.toLocaleString()}</td>
-                                                        <td className="px-4 py-3"></td>
-                                                    </tr>
-                                                </tbody>
-                                            </table>
-                                        </div>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100">
+                                                        {mSheet.items.map((item, index) => (
+                                                            <tr key={item.id} className="hover:bg-slate-50/50">
+                                                                <td className="px-4 py-3 text-center text-slate-400 border-r border-slate-200">{index + 1}</td>
+                                                                <td className="px-4 py-3 font-semibold text-slate-700 border-r border-slate-200">{item.cargoName}</td>
+                                                                <td className="px-4 py-3 text-slate-600 border-r border-slate-200">{item.content}</td>
+                                                                <td className="px-4 py-3 text-center text-slate-500 border-r border-slate-200">{item.unit}</td>
+                                                                <td className="px-4 py-3 text-center font-bold text-slate-700 border-r border-slate-200 bg-slate-50/50">{item.quantity}</td>
+                                                                <td className="px-4 py-3 text-right text-slate-500 border-r border-slate-200">{item.unitPrice.toLocaleString()}</td>
+                                                                <td className="px-4 py-3 text-right font-bold text-emerald-600 border-r border-slate-200 bg-emerald-50/30">{item.total.toLocaleString()}</td>
+                                                                <td className="px-4 py-3 text-slate-500 italic text-xs">{item.note}</td>
+                                                            </tr>
+                                                        ))}
+                                                        <tr className="bg-slate-100/50 font-bold text-slate-800">
+                                                            <td className="px-4 py-3 text-center border-r border-slate-200"></td>
+                                                            <td className="px-4 py-3 border-r border-slate-200">Cộng Tháng {mSheet.month}</td>
+                                                            <td className="px-4 py-3 border-r border-slate-200"></td>
+                                                            <td className="px-4 py-3 border-r border-slate-200"></td>
+                                                            <td className="px-4 py-3 text-center border-r border-slate-200">{mSheet.totalQuantity}</td>
+                                                            <td className="px-4 py-3 text-right border-r border-slate-200"></td>
+                                                            <td className="px-4 py-3 text-right text-emerald-700 border-r border-slate-200">{mSheet.totalSalary.toLocaleString()} đ</td>
+                                                            <td className="px-4 py-3"></td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        ))}
                                     </div>
                                 )}
                             </div>

@@ -157,11 +157,17 @@ export const SalarySlipMobile: React.FC<SalarySlipMobileProps> = ({ tickets, not
                                         <>
                                             <div className="fixed inset-0 z-10" onClick={() => setIsMonthDropdownOpen(false)}></div>
                                             <div className="absolute top-full mt-2 left-0 min-w-[140px] bg-white border border-slate-200 shadow-xl rounded-xl z-20 p-2 grid grid-cols-1 gap-1 max-h-[40vh] overflow-y-auto">
+                                                <label
+                                                    className={`flex items-center gap-2 px-3 py-2 cursor-pointer rounded-lg transition-colors border ${filterMonths.length === 0 ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-transparent hover:bg-slate-50 text-slate-600'}`}
+                                                    onClick={() => setFilterMonths([])}
+                                                >
+                                                    <span className="text-sm font-semibold">Tất cả tháng</span>
+                                                </label>
                                                 {Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(m => (
-                                                    <label key={m} className={`flex items-center gap-2 px-2 py-1.5 cursor-pointer rounded-lg transition-colors ${filterMonths.includes(m) ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50 text-slate-700'}`}>
+                                                    <label key={m} className={`flex items-center gap-2 px-3 py-2 cursor-pointer rounded-lg transition-colors border ${filterMonths.includes(m) ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-transparent hover:bg-slate-50 text-slate-600'}`}>
                                                         <input 
                                                             type="checkbox" 
-                                                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                                            className="hidden"
                                                             checked={filterMonths.includes(m)}
                                                             onChange={(e) => {
                                                                 if (e.target.checked) setFilterMonths(prev => [...prev, m].sort((a,b)=>a.localeCompare(b)));
