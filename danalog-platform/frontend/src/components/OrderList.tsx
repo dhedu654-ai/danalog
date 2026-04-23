@@ -115,6 +115,21 @@ export function OrderList({ currentUser, onRefreshTickets }: { currentUser: any;
         return tickets.filter(t => t.orderId === orderId).length;
     };
 
+    // Convert any date string (ISO or other) to YYYY-MM-DD for input[type=date]
+    const toDateInputValue = (dateStr: string | undefined | null): string => {
+        if (!dateStr) return '';
+        // Already YYYY-MM-DD
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+        // ISO or other parsable format
+        try {
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return '';
+            return d.toISOString().split('T')[0];
+        } catch {
+            return '';
+        }
+    };
+
     // Handle editing an order
     const handleStartEdit = (order: Order) => {
         if (isInAssignProcess(order)) {
@@ -125,8 +140,8 @@ export function OrderList({ currentUser, onRefreshTickets }: { currentUser: any;
         }
         setEditingOrder(order);
         setEditFormData({
-            pickupDate: order.pickupDate || '',
-            deliveryDate: order.deliveryDate || '',
+            pickupDate: toDateInputValue(order.pickupDate),
+            deliveryDate: toDateInputValue(order.deliveryDate),
             containers: order.containers ? order.containers.map(c => ({ ...c })) : [],
             notes: order.notes || ''
         });
@@ -293,7 +308,8 @@ export function OrderList({ currentUser, onRefreshTickets }: { currentUser: any;
                                 <th className="px-4 lg:px-5 py-3 lg:py-4 font-bold text-slate-500 uppercase tracking-wider text-[10px] lg:text-xs">Mã đơn</th>
                                 <th className="px-4 lg:px-5 py-3 lg:py-4 font-bold text-slate-500 uppercase tracking-wider text-[10px] lg:text-xs">Khách hàng</th>
                                 <th className="px-4 lg:px-5 py-3 lg:py-4 font-bold text-slate-500 uppercase tracking-wider text-[10px] lg:text-xs">Tuyến đường</th>
-                                <th className="px-4 lg:px-5 py-3 lg:py-4 font-bold text-slate-500 uppercase tracking-wider text-[10px] lg:text-xs text-center">Ngày lấy</th>
+                                <th className="px-4 lg:px-5 py-3 lg:py-4 font-bold text-slate-500 uppercase tracking-wider text-[10px] lg:text-xs text-center">Ngày bắt đầu</th>
+                                <th className="px-4 lg:px-5 py-3 lg:py-4 font-bold text-slate-500 uppercase tracking-wider text-[10px] lg:text-xs text-center">Ngày kết thúc</th>
                                 <th className="px-4 lg:px-5 py-3 lg:py-4 font-bold text-slate-500 uppercase tracking-wider text-[10px] lg:text-xs text-center">Container</th>
                                 <th className="px-4 lg:px-5 py-3 lg:py-4 font-bold text-slate-500 uppercase tracking-wider text-[10px] lg:text-xs text-center">Số phiếu</th>
                                 <th className="px-4 lg:px-5 py-3 lg:py-4 font-bold text-slate-500 uppercase tracking-wider text-[10px] lg:text-xs text-center">Trạng thái</th>
@@ -318,6 +334,9 @@ export function OrderList({ currentUser, onRefreshTickets }: { currentUser: any;
                                         <td className="px-5 py-4 max-w-[200px] truncate text-slate-600" title={order.routeName}>{order.routeName}</td>
                                         <td className="px-5 py-4 text-center text-slate-600">
                                             {order.pickupDate ? format(new Date(order.pickupDate), 'dd/MM/yyyy') : '-'}
+                                        </td>
+                                        <td className="px-5 py-4 text-center text-slate-600">
+                                            {order.deliveryDate ? format(new Date(order.deliveryDate), 'dd/MM/yyyy') : '-'}
                                         </td>
                                         <td className="px-5 py-4 text-center">
                                             <span className="px-2 py-1 bg-slate-100 rounded-md text-xs font-bold text-slate-600">{getContainerSummary(order)}</span>
@@ -360,7 +379,7 @@ export function OrderList({ currentUser, onRefreshTickets }: { currentUser: any;
                             })}
                             {paginatedOrders.length === 0 && (
                                 <tr>
-                                    <td colSpan={10} className="px-6 py-12 text-center text-slate-400 italic">
+                                    <td colSpan={11} className="px-6 py-12 text-center text-slate-400 italic">
                                         {isLoading ? 'Đang tải...' : 'Không có đơn hàng nào'}
                                     </td>
                                 </tr>
