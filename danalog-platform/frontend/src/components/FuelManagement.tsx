@@ -31,7 +31,7 @@ export function FuelManagement({ users = [], tickets = [], routeConfigs = [] }: 
     const [filterType, setFilterType] = useState<'month'|'range'>('month');
     const [selectedMonths, setSelectedMonths] = useState<number[]>([new Date().getMonth() + 1]);
     const [isMonthDropdownOpen, setIsMonthDropdownOpen] = useState(false);
-    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    const [selectedYear, setSelectedYear] = useState<number | 'ALL'>(new Date().getFullYear());
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [selectedStation, setSelectedStation] = useState('ALL');
@@ -97,7 +97,8 @@ export function FuelManagement({ users = [], tickets = [], routeConfigs = [] }: 
             const dateStr = timeStr ? timeStr.substring(0, 10) : '';
             
             if (filterType === 'month') {
-                if (!selectedMonths.includes(d.getMonth() + 1) || d.getFullYear() !== selectedYear) return false;
+                if (selectedMonths.length > 0 && !selectedMonths.includes(d.getMonth() + 1)) return false;
+                if (selectedYear !== 'ALL' && d.getFullYear() !== selectedYear) return false;
             } else {
                 if (startDate && dateStr < startDate) return false;
                 if (endDate && dateStr > endDate) return false;
@@ -362,12 +363,24 @@ export function FuelManagement({ users = [], tickets = [], routeConfigs = [] }: 
                                         className="bg-slate-50 border border-slate-200 text-sm rounded-lg py-2.5 px-3 font-bold outline-none cursor-pointer flex items-center justify-between min-w-[120px] max-w-[160px] truncate"
                                         onClick={() => setIsMonthDropdownOpen(!isMonthDropdownOpen)}
                                     >
-                                        <span>{selectedMonths.length === 0 ? 'Chọn tháng' : `Tháng ${selectedMonths.join(', ')}`}</span>
+                                        <span>{selectedMonths.length === 0 ? 'Tất cả các tháng' : `Tháng ${selectedMonths.join(', ')}`}</span>
                                     </div>
                                     {isMonthDropdownOpen && (
                                         <>
                                             <div className="fixed inset-0 z-10" onClick={() => setIsMonthDropdownOpen(false)}></div>
-                                            <div className="absolute top-full mt-1 left-0 min-w-[140px] bg-white border border-slate-200 shadow-xl rounded-xl z-20 p-2 grid grid-cols-1 gap-1 max-h-60 overflow-y-auto">
+                                            <div className="absolute top-full mt-1 left-0 min-w-[150px] bg-white border border-slate-200 shadow-xl rounded-xl z-20 p-2 grid grid-cols-1 gap-1 max-h-60 overflow-y-auto">
+                                                <label className={`flex items-center gap-2 px-2 py-1.5 cursor-pointer rounded-lg transition-colors ${selectedMonths.length === 0 ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50 text-slate-700'}`}>
+                                                    <input 
+                                                        type="checkbox" 
+                                                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                                        checked={selectedMonths.length === 0}
+                                                        onChange={(e) => {
+                                                            if (e.target.checked) setSelectedMonths([]);
+                                                            setCurrentPage(1);
+                                                        }}
+                                                    />
+                                                    <span className="text-sm font-semibold">Tất cả các tháng</span>
+                                                </label>
                                                 {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
                                                     <label key={m} className={`flex items-center gap-2 px-2 py-1.5 cursor-pointer rounded-lg transition-colors ${selectedMonths.includes(m) ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50 text-slate-700'}`}>
                                                         <input 
@@ -390,8 +403,9 @@ export function FuelManagement({ users = [], tickets = [], routeConfigs = [] }: 
                                         </>
                                     )}
                                 </div>
-                                <select className="bg-slate-50 border border-slate-200 text-sm rounded-lg p-2.5 font-bold outline-none" value={selectedYear} onChange={e => { setSelectedYear(parseInt(e.target.value)); setCurrentPage(1); }}>
-                                    {[2025, 2026].map(y => (
+                                <select className="bg-slate-50 border border-slate-200 text-sm rounded-lg p-2.5 font-bold outline-none" value={selectedYear} onChange={e => { setSelectedYear(e.target.value === 'ALL' ? 'ALL' : parseInt(e.target.value)); setCurrentPage(1); }}>
+                                    <option value="ALL">Tất cả các năm</option>
+                                    {[2023, 2024, 2025, 2026].map(y => (
                                         <option key={y} value={y}>Năm {y}</option>
                                     ))}
                                 </select>
