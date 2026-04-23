@@ -115,16 +115,19 @@ export function OrderList({ currentUser, onRefreshTickets }: { currentUser: any;
         return tickets.filter(t => t.orderId === orderId).length;
     };
 
-    // Convert any date string (ISO or other) to YYYY-MM-DD for input[type=date]
-    const toDateInputValue = (dateStr: string | undefined | null): string => {
+    // Convert any date string (ISO or other) to YYYY-MM-DDTHH:mm for input[type=datetime-local]
+    const toDatetimeInputValue = (dateStr: string | undefined | null): string => {
         if (!dateStr) return '';
-        // Already YYYY-MM-DD
-        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
-        // ISO or other parsable format
         try {
             const d = new Date(dateStr);
             if (isNaN(d.getTime())) return '';
-            return d.toISOString().split('T')[0];
+            // Convert to local timezone for datetime-local input
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const hours = String(d.getHours()).padStart(2, '0');
+            const minutes = String(d.getMinutes()).padStart(2, '0');
+            return `${year}-${month}-${day}T${hours}:${minutes}`;
         } catch {
             return '';
         }
@@ -140,8 +143,8 @@ export function OrderList({ currentUser, onRefreshTickets }: { currentUser: any;
         }
         setEditingOrder(order);
         setEditFormData({
-            pickupDate: toDateInputValue(order.pickupDate),
-            deliveryDate: toDateInputValue(order.deliveryDate),
+            pickupDate: toDatetimeInputValue(order.pickupDate),
+            deliveryDate: toDatetimeInputValue(order.deliveryDate),
             containers: order.containers ? order.containers.map(c => ({ ...c })) : [],
             notes: order.notes || ''
         });
@@ -333,10 +336,10 @@ export function OrderList({ currentUser, onRefreshTickets }: { currentUser: any;
                                         <td className="px-5 py-4 font-bold text-slate-700">{order.customerName}</td>
                                         <td className="px-5 py-4 max-w-[200px] truncate text-slate-600" title={order.routeName}>{order.routeName}</td>
                                         <td className="px-5 py-4 text-center text-slate-600">
-                                            {order.pickupDate ? format(new Date(order.pickupDate), 'dd/MM/yyyy') : '-'}
+                                            {order.pickupDate ? format(new Date(order.pickupDate), 'dd/MM/yyyy HH:mm') : '-'}
                                         </td>
                                         <td className="px-5 py-4 text-center text-slate-600">
-                                            {order.deliveryDate ? format(new Date(order.deliveryDate), 'dd/MM/yyyy') : '-'}
+                                            {order.deliveryDate ? format(new Date(order.deliveryDate), 'dd/MM/yyyy HH:mm') : '-'}
                                         </td>
                                         <td className="px-5 py-4 text-center">
                                             <span className="px-2 py-1 bg-slate-100 rounded-md text-xs font-bold text-slate-600">{getContainerSummary(order)}</span>
@@ -449,7 +452,7 @@ export function OrderList({ currentUser, onRefreshTickets }: { currentUser: any;
                                 <div>
                                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Ngày bắt đầu</label>
                                     <input
-                                        type="date"
+                                        type="datetime-local"
                                         className="w-full px-3 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium"
                                         value={editFormData.pickupDate}
                                         onChange={e => setEditFormData({ ...editFormData, pickupDate: e.target.value })}
@@ -458,7 +461,7 @@ export function OrderList({ currentUser, onRefreshTickets }: { currentUser: any;
                                 <div>
                                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Ngày kết thúc</label>
                                     <input
-                                        type="date"
+                                        type="datetime-local"
                                         className="w-full px-3 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium"
                                         value={editFormData.deliveryDate}
                                         onChange={e => setEditFormData({ ...editFormData, deliveryDate: e.target.value })}

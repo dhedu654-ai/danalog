@@ -169,7 +169,7 @@ export function DriverRevenueTable({ tickets }: { tickets: TransportTicket[] }) 
 
             const dataRows = driverTickets.map((t, idx) => [
                 idx + 1,
-                t.dateStart ? format(new Date(t.dateStart), 'dd/MM/yyyy') : '-',
+                t.dateStart ? format(new Date(t.dateStart), 'dd/MM/yyyy HH:mm') : '-',
                 t.containerNo,
                 t.size,
                 t.trips || 1,
@@ -408,7 +408,7 @@ export function DriverRevenueTable({ tickets }: { tickets: TransportTicket[] }) 
                                 filteredTickets.map((ticket, index) => (
                                     <tr key={ticket.id} className="hover:bg-blue-50/30 transition-colors">
                                         <td className="px-6 py-4 text-center text-slate-400 font-medium">{index + 1}</td>
-                                        <td className="px-6 py-4 text-slate-600">{ticket.dateStart ? format(new Date(ticket.dateStart), 'dd/MM/yyyy') : '-'}</td>
+                                        <td className="px-6 py-4 text-slate-600">{ticket.dateStart ? format(new Date(ticket.dateStart), 'dd/MM/yyyy HH:mm') : '-'}</td>
                                         <td className="px-6 py-4 font-mono text-slate-600">{ticket.containerNo}</td>
                                         <td className="px-6 py-4 text-center text-slate-600">{ticket.size}</td>
                                         <td className="px-6 py-4 text-center text-slate-600">{ticket.trips || 1}</td>

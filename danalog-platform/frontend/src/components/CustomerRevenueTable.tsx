@@ -184,7 +184,7 @@ export function CustomerRevenueTable({ tickets }: { tickets: TransportTicket[] }
 
                 return [
                     idx + 1,
-                    format(new Date(t.dateStart), 'dd/MM/yyyy'),
+                    format(new Date(t.dateStart), 'dd/MM/yyyy HH:mm'),
                     "", // Bill No (Not in types? Leaving empty as per requirement)
                     t.containerNo,
                     t.licensePlate || "",
@@ -488,7 +488,7 @@ export function CustomerRevenueTable({ tickets }: { tickets: TransportTicket[] }
                                                 {index + 1}
                                             </td>
                                             <td className="px-4 py-3 font-bold text-slate-700 w-48 truncate" title={ticket.customerCode}>{ticket.customerCode}</td>
-                                            <td className="px-4 py-3 text-center text-slate-600">{format(new Date(ticket.dateStart), 'dd/MM/yyyy')}</td>
+                                            <td className="px-4 py-3 text-center text-slate-600">{format(new Date(ticket.dateStart), 'dd/MM/yyyy HH:mm')}</td>
                                             <td className="px-4 py-3 text-center text-slate-500">-</td>
                                             <td className="px-4 py-3 font-mono text-slate-600 font-bold">{ticket.containerNo}</td>
                                             <td className="px-4 py-3 font-medium text-slate-700">{ticket.licensePlate || ""}</td>

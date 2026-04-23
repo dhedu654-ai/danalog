@@ -88,7 +88,6 @@ export const HomeMobile: React.FC<HomeMobileProps> = ({ tickets, routeConfigs, c
         try {
             const fieldsToUpdate: any = { dispatchStatus: newStatus };
             const nowISO = new Date().toISOString();
-            const todayStr = nowISO.split('T')[0]; // Format as YYYY-MM-DD
 
             // Build new statusHistory entry
             const historyEntry: any = {
@@ -98,12 +97,12 @@ export const HomeMobile: React.FC<HomeMobileProps> = ({ tickets, routeConfigs, c
 
             if (newStatus === 'IN_PROGRESS') {
                 fieldsToUpdate.status = 'ĐANG VẬN CHUYỂN';
-                fieldsToUpdate.dateStart = todayStr;
+                fieldsToUpdate.dateStart = nowISO;
                 historyEntry.status = 'IN_PROGRESS';
                 historyEntry.action = 'Bắt đầu chuyến đi';
             } else if (newStatus === 'COMPLETED') {
                 fieldsToUpdate.status = 'COMPLETED';
-                fieldsToUpdate.dateEnd = todayStr;
+                fieldsToUpdate.dateEnd = nowISO;
                 historyEntry.status = 'COMPLETED';
                 historyEntry.action = 'Kết thúc chuyến đi';
             }

@@ -383,9 +383,9 @@ export function TicketList({ tickets, onUpdateTickets, onUpdateTicket, routeConf
                                     <td className="px-6 py-4 text-center text-slate-400 font-medium">{(currentPage - 1) * PAGE_SIZE + index + 1}</td>
                                     <td className="px-6 py-4">
                                         <div className="flex flex-col">
-                                            <span className="font-medium text-slate-700">{ticket.dateStart ? format(new Date(ticket.dateStart), 'dd/MM/yyyy') : '-'}</span>
+                                            <span className="font-medium text-slate-700">{ticket.dateStart ? format(new Date(ticket.dateStart), 'dd/MM/yyyy HH:mm') : '-'}</span>
                                             {ticket.dateEnd !== ticket.dateStart && (
-                                                <span className="text-xs text-slate-400">→ {format(new Date(ticket.dateEnd), 'dd/MM/yyyy')}</span>
+                                                <span className="text-xs text-slate-400">→ {format(new Date(ticket.dateEnd), 'dd/MM/yyyy HH:mm')}</span>
                                             )}
                                         </div>
                                     </td>
