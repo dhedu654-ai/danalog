@@ -81,7 +81,7 @@ export function RouteConfigList({ configs, onUpdateConfigs, isReadOnly, tickets:
     // Unique values for filters
     const uniqueCargoTypes = useMemo(() => Array.from(new Set(configs.map(c => c.cargoType))), [configs]);
     const uniqueCustomers = useMemo(() => {
-        const fromConfigs = Array.from(new Set(configs.map(c => c.customer).filter(Boolean)));
+        const fromConfigs = Array.from(new Set(configs.flatMap(c => c.customers || []).filter(Boolean)));
         const fromApi = customers.map(c => c.name);
         return Array.from(new Set([...fromConfigs, ...fromApi])).sort();
     }, [configs, customers]);
@@ -127,7 +127,7 @@ export function RouteConfigList({ configs, onUpdateConfigs, isReadOnly, tickets:
     const filteredConfigs = useMemo(() => {
         return enrichedConfigs.filter(config => {
             const matchesSearch = (config.routeName || '').toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesCustomer = filterCustomer === 'ALL' || config.customer === filterCustomer;
+            const matchesCustomer = filterCustomer === 'ALL' || (config.customers && config.customers.includes(filterCustomer)) || (!config.customers?.length);
             const matchesCargoType = filterCargoType === 'ALL' || config.cargoType === filterCargoType;
             const matchesZone = filterZone === 'ALL' || config.zone === filterZone;
             return matchesSearch && matchesCustomer && matchesCargoType && matchesZone;
@@ -142,7 +142,7 @@ export function RouteConfigList({ configs, onUpdateConfigs, isReadOnly, tickets:
             switch (sortField) {
                 case 'routeName': va = a.routeName; vb = b.routeName; break;
                 case 'km': va = a.km || 0; vb = b.km || 0; break;
-                case 'customer': va = a.customer; vb = b.customer; break;
+                case 'customer': va = a.customers?.join(', ') || ''; vb = b.customers?.join(', ') || ''; break;
                 case 'cargoType': va = a.cargoType; vb = b.cargoType; break;
                 case 'trips': va = a.trips; vb = b.trips; break;
                 case 'actualRevenue': va = a.totalRevenue; vb = b.totalRevenue; break;
@@ -469,7 +469,9 @@ export function RouteConfigList({ configs, onUpdateConfigs, isReadOnly, tickets:
                                     <td className="px-2 py-2.5">
                                         <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-slate-100 text-slate-600 whitespace-nowrap">{cargoLabel(config.cargoType)}</span>
                                     </td>
-                                    <td className="px-2 py-2.5 text-xs text-slate-600 max-w-[120px] truncate" title={config.customer}>{config.customer}</td>
+                                    <td className="px-2 py-2.5 text-xs text-slate-600 max-w-[120px] truncate" title={config.customers?.join(', ')}>
+                                        {config.customers && config.customers.length > 0 ? config.customers.join(', ') : <span className="text-slate-400 italic">Mọi khách hàng</span>}
+                                    </td>
                                     {viewTab === 'config' ? (
                                         <>
                                             <td className="text-right px-2 py-2.5 text-xs font-mono text-blue-700">{fmt(config.revenue?.price20E || 0)}</td>

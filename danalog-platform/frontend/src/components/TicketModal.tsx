@@ -224,7 +224,7 @@ export function TicketModal({ ticket, isOpen, onClose, onSave, routeConfigs = []
     // Helper to safely compare dates
     const isValidRoute = (rc: RouteConfig) => {
         if (!rc) return false;
-        if (rc.customer !== formData.customerCode) return false;
+        if (rc.customers && rc.customers.length > 0 && !rc.customers.includes(formData.customerCode || '')) return false;
 
         // Use Timestamp comparison for robustness
         const routeEffective = rc.effectiveDate ? new Date(rc.effectiveDate).getTime() : 0;

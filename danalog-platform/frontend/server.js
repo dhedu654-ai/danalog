@@ -162,15 +162,13 @@ const DEFAULT_CUSTOMERS = [
     { id: 'CUST-008', code: 'XIDADONG', name: 'XIDADONG', taxCode: '', contractNo: '', status: 'ACTIVE', createdAt: '2023-01-01', updatedAt: '2023-01-01' },
     { id: 'CUST-009', code: 'KHO_DNL', name: 'Kho hàng DNL', taxCode: '', contractNo: '', status: 'ACTIVE', createdAt: '2023-01-01', updatedAt: '2023-01-01' },
     { id: 'CUST-010', code: 'DEPOT', name: 'Depot', taxCode: '', contractNo: '', status: 'ACTIVE', createdAt: '2023-01-01', updatedAt: '2023-01-01' },
-    { id: 'CUST-011', code: 'TRUNG_CHUYEN', name: 'TRUNG CHUYỂN', taxCode: '', contractNo: '', status: 'ACTIVE', createdAt: '2023-01-01', updatedAt: '2023-01-01' },
-    { id: 'CUST-012', code: 'MULTI', name: 'Nhiều khách hàng', taxCode: '', contractNo: '', status: 'ACTIVE', createdAt: '2023-01-01', updatedAt: '2023-01-01' }
 ];
 
 const DEFAULT_ROUTES = [
     {
         "id": "RT-060",
         "routeName": "Nội bộ kho bãi Danalog 1",
-        "customer": "TRUNG CHUYỂN",
+        "customers": [],
         "cargoType": "TR_C_NOI_BO",
         "isNightStay": false,
         "revenue": {
@@ -195,7 +193,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-061",
         "routeName": "Giấy từ kho bãi Tiên Sa - cầu tàu Tiên Sa",
-        "customer": "TRUNG CHUYỂN",
+        "customers": [],
         "cargoType": "TR_C_CHUYEN_GIAY",
         "isNightStay": false,
         "revenue": {
@@ -220,7 +218,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-062",
         "routeName": "Giấy từ kho Danalog - Cảng Tiên Sa",
-        "customer": "TRUNG CHUYỂN",
+        "customers": [],
         "cargoType": "TR_C_CHUYEN_GIAY",
         "isNightStay": false,
         "revenue": {
@@ -245,7 +243,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-063",
         "routeName": "Tàu - Bãi Cảng Tiên Sa",
-        "customer": "TRUNG CHUYỂN",
+        "customers": [],
         "cargoType": "TR_C_NOI_BO",
         "isNightStay": false,
         "revenue": {
@@ -270,7 +268,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-064",
         "routeName": "Danalog 1 - Các bãi ngoài (GFT, GLS, VCS…)",
-        "customer": "TRUNG CHUYỂN",
+        "customers": [],
         "cargoType": "TR_C_NOI_BO",
         "isNightStay": false,
         "revenue": {
@@ -295,7 +293,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-065",
         "routeName": "Danalog 1,3,5<->Tiên Sa cont rỗng (Kiểm Soát Bãi)",
-        "customer": "TRUNG CHUYỂN",
+        "customers": [],
         "cargoType": "TR_C_NOI_BO",
         "isNightStay": false,
         "revenue": {
@@ -320,7 +318,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-066",
         "routeName": "Tiên Sa - Danalog (Z6 sang cont)",
-        "customer": "TRUNG CHUYỂN",
+        "customers": [],
         "cargoType": "TR_C_NOI_BO",
         "isNightStay": false,
         "revenue": {
@@ -345,7 +343,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-067",
         "routeName": "Tiên Sa <->Các Depot GFT, Chân Thật, SGS, TQ, VF",
-        "customer": "TRUNG CHUYỂN",
+        "customers": [],
         "cargoType": "TR_C_NOI_BO",
         "isNightStay": false,
         "revenue": {
@@ -370,7 +368,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-068",
         "routeName": "Danalog <->Các Depot GFT, Chân Thật, SGS, TQ, VF",
-        "customer": "TRUNG CHUYỂN",
+        "customers": [],
         "cargoType": "TR_C_NOI_BO",
         "isNightStay": false,
         "revenue": {
@@ -395,7 +393,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-069",
         "routeName": "Tiên Sa <-> Danang 1: cont có hàng",
-        "customer": "TRUNG CHUYỂN",
+        "customers": [],
         "cargoType": "TR_C_NOI_BO",
         "isNightStay": false,
         "revenue": {
@@ -420,7 +418,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-070",
         "routeName": "Danalog 1 - Tiên Sa: cont có hàng",
-        "customer": "TRUNG CHUYỂN",
+        "customers": [],
         "cargoType": "TR_C_NOI_BO",
         "isNightStay": false,
         "revenue": {
@@ -445,7 +443,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-071",
         "routeName": "Hàng hóa kho CFS cont 20\'",
-        "customer": "Kho hàng DNL",
+        "customers": ["Kho hàng DNL"],
         "cargoType": "KHO_CFS_20",
         "isNightStay": false,
         "revenue": {
@@ -470,7 +468,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-072",
         "routeName": "Hàng hóa kho CFS, cont 40\'",
-        "customer": "Kho hàng DNL",
+        "customers": ["Kho hàng DNL"],
         "cargoType": "KHO_CFS_40",
         "isNightStay": false,
         "revenue": {
@@ -495,7 +493,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-073",
         "routeName": "Cảng Tiên Sa - Cửa khẩu quốc tế Lao Bảo - Nhà máy Sunpaper Savannakhet, Lào (2 chiều)",
-        "customer": "QZY",
+        "customers": ["QZY"],
         "cargoType": "VC_GIAY",
         "isNightStay": false,
         "revenue": {
@@ -520,7 +518,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-074",
         "routeName": "Cảng Tiên Sa - Cửa khẩu quốc tế Lao Bảo - Nhà máy Sunpaper Savannakhet, Lào (1 chiều)",
-        "customer": "QZY",
+        "customers": ["QZY"],
         "cargoType": "VC_GIAY",
         "isNightStay": false,
         "revenue": {
@@ -545,7 +543,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-075",
         "routeName": "Cảng Tiên Sa Danang ( VietNam ) - Vientiane, Lào.",
-        "customer": "STEINWEG",
+        "customers": ["AST"],
         "cargoType": "VC_CONT",
         "isNightStay": false,
         "revenue": {
@@ -570,7 +568,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-076",
         "routeName": "NM Tinh bột sắn, Sepon Lào - Cảng Tiên Sa Đà Nẵng (bốc container rỗng sang nhà máy đóng hàng)",
-        "customer": "PHÙNG GIA PHÁT",
+        "customers": ["PHÙNG GIA PHÁT"],
         "cargoType": "VC_BOT",
         "isNightStay": false,
         "revenue": {
@@ -595,7 +593,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-077",
         "routeName": "Cảng Tiên Sa - Thateng, Sekong, Lào (qua cửa khẩu Lalay)",
-        "customer": "VẠN TƯỢNG",
+        "customers": ["VẠN TƯỢNG"],
         "cargoType": "VC_BOT",
         "isNightStay": false,
         "revenue": {
@@ -620,7 +618,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-078",
         "routeName": "Cảng Tiên Sa - Nhà máy Quặng Quảng Bình",
-        "customer": "Nhiều khách hàng",
+        "customers": [],
         "cargoType": "VC_CONT",
         "isNightStay": false,
         "revenue": {
@@ -645,7 +643,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-079",
         "routeName": "Cảng Chu Lai - Hyosung Tam Thăng, Tam Kỳ, Quảng Nam",
-        "customer": "HYOSUNG",
+        "customers": ["HYOSUNG"],
         "cargoType": "VC_CONT",
         "isNightStay": false,
         "revenue": {
@@ -670,7 +668,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-080",
         "routeName": "Cảng Chu Lai - Hyosung Tam Thăng, Tam Kỳ, Quảng Nam (2 chuyến)",
-        "customer": "HYOSUNG",
+        "customers": ["HYOSUNG"],
         "cargoType": "VC_CONT",
         "isNightStay": false,
         "revenue": {
@@ -695,7 +693,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-081",
         "routeName": "Cảng Chu Lai - Hyosung Tam Thăng, Tam Kỳ, Quảng Nam (3 chuyến)",
-        "customer": "HYOSUNG",
+        "customers": ["HYOSUNG"],
         "cargoType": "VC_CONT",
         "isNightStay": false,
         "revenue": {
@@ -720,7 +718,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-082",
         "routeName": "Cảng Tiên Sa, Đà Nẵng- Hyosung Tam Thăng, Tam Kỳ, Quảng Nam",
-        "customer": "HYOSUNG",
+        "customers": ["HYOSUNG"],
         "cargoType": "VC_CONT",
         "isNightStay": false,
         "revenue": {
@@ -745,7 +743,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-083",
         "routeName": "Cảng Tiên Sa, Đà Nẵng- Hyosung Tam Thăng, Tam Kỳ, Quảng Nam (2 chuyến)",
-        "customer": "HYOSUNG",
+        "customers": ["HYOSUNG"],
         "cargoType": "VC_CONT",
         "isNightStay": false,
         "revenue": {
@@ -770,7 +768,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-084",
         "routeName": "Cảng Tiên Sa - KCN Thọ Quang",
-        "customer": "Nhiều khách hàng",
+        "customers": [],
         "cargoType": "VC_CONT",
         "isNightStay": false,
         "revenue": {
@@ -795,7 +793,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-085",
         "routeName": "Cảng Tiên Sa - Phú Bài, Huế",
-        "customer": "Nhiều khách hàng",
+        "customers": [],
         "cargoType": "VC_CONT",
         "isNightStay": false,
         "revenue": {
@@ -820,7 +818,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-086",
         "routeName": "Cảng Tiên Sa - Phú Bài, Huế",
-        "customer": "Nhiều khách hàng",
+        "customers": [],
         "cargoType": "VC_CONT",
         "isNightStay": false,
         "revenue": {
@@ -845,7 +843,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-087",
         "routeName": "Cảng Tiên Sa - KCN Hòa Khánh",
-        "customer": "Nhiều khách hàng",
+        "customers": [],
         "cargoType": "VC_CONT",
         "isNightStay": false,
         "revenue": {
@@ -870,7 +868,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-088",
         "routeName": "Cảng Tiên Sa - KCN Hòa Cầm",
-        "customer": "Nhiều khách hàng",
+        "customers": [],
         "cargoType": "VC_CONT",
         "isNightStay": false,
         "revenue": {
@@ -895,7 +893,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-089",
         "routeName": "Cảng Tiên Sa - Điện Ngọc, Điện Bàn",
-        "customer": "Nhiều khách hàng",
+        "customers": [],
         "cargoType": "VC_CONT",
         "isNightStay": false,
         "revenue": {
@@ -920,7 +918,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-090",
         "routeName": "DNL 1 - Điện Thắng, Sợi Quảng Đà",
-        "customer": "Nhiều khách hàng",
+        "customers": [],
         "cargoType": "VC_CONT",
         "isNightStay": false,
         "revenue": {
@@ -945,7 +943,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-091",
         "routeName": "Cảng Tiên Sa - KCN Duy Xuyên",
-        "customer": "Nhiều khách hàng",
+        "customers": [],
         "cargoType": "VC_CONT",
         "isNightStay": false,
         "revenue": {
@@ -970,7 +968,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-092",
         "routeName": "Cảng Tiên Sa - KCN Quảng Ngãi (Quanterm 125km)",
-        "customer": "Nhiều khách hàng",
+        "customers": [],
         "cargoType": "VC_CONT",
         "isNightStay": false,
         "revenue": {
@@ -995,7 +993,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-093",
         "routeName": "Cảng Tiên Sa - KCN Quảng Ngãi (Vinalink 130km)",
-        "customer": "Nhiều khách hàng",
+        "customers": [],
         "cargoType": "VC_CONT",
         "isNightStay": false,
         "revenue": {
@@ -1020,7 +1018,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-094",
         "routeName": "Cảng Tiên Sa - MN Hoà Thọ, Hà Lam, QN",
-        "customer": "Nhiều khách hàng",
+        "customers": [],
         "cargoType": "VC_CONT",
         "isNightStay": false,
         "revenue": {
@@ -1045,7 +1043,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-095",
         "routeName": "Cảng Tiên Sa - KCN Đông Quế Sơn (Giáp Quốc lộ 1A )",
-        "customer": "Nhiều khách hàng",
+        "customers": [],
         "cargoType": "VC_CONT",
         "isNightStay": false,
         "revenue": {
@@ -1070,7 +1068,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-096",
         "routeName": "Cảng Tiên Sa - Lao Bảo, Quảng Trị (Gỗ)",
-        "customer": "Nhiều khách hàng",
+        "customers": [],
         "cargoType": "VC_CONT",
         "isNightStay": false,
         "revenue": {
@@ -1095,7 +1093,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-097",
         "routeName": "Cảng Tiên Sa - Đông Hà, Quảng Trị (Gỗ)",
-        "customer": "Nhiều khách hàng",
+        "customers": [],
         "cargoType": "VC_CONT",
         "isNightStay": false,
         "revenue": {
@@ -1120,7 +1118,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-098",
         "routeName": "Cảng Tiên Sa, Đà Nẵng đến Quy Nhơn",
-        "customer": "Nhiều khách hàng",
+        "customers": [],
         "cargoType": "VC_CONT",
         "isNightStay": false,
         "revenue": {
@@ -1145,7 +1143,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-099",
         "routeName": "Cảng Tiên Sa - Đồng Hới, Quảng Bình",
-        "customer": "Nhiều khách hàng",
+        "customers": [],
         "cargoType": "VC_CONT",
         "isNightStay": false,
         "revenue": {
@@ -1170,7 +1168,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-100",
         "routeName": "Cảng Tiên Sa - KCN Bắc Sông Cầu - Phú Yên",
-        "customer": "Nhiều khách hàng",
+        "customers": [],
         "cargoType": "VC_CONT",
         "isNightStay": false,
         "revenue": {
@@ -1195,7 +1193,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-101",
         "routeName": "Tuyến đường khác",
-        "customer": "Nhiều khách hàng",
+        "customers": [],
         "cargoType": "VC_CONT",
         "isNightStay": false,
         "revenue": {
@@ -1220,7 +1218,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-102",
         "routeName": "Trong TP",
-        "customer": "",
+        "customers": [],
         "cargoType": "LUU_DEM",
         "isNightStay": true,
         "nightStayLocation": "INNER_CITY",
@@ -1246,7 +1244,7 @@ const DEFAULT_ROUTES = [
     {
         "id": "RT-103",
         "routeName": "Ngoài TP",
-        "customer": "",
+        "customers": [],
         "cargoType": "LUU_DEM",
         "isNightStay": true,
         "nightStayLocation": "OUTER_CITY",

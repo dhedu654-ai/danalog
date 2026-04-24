@@ -73,7 +73,7 @@ export function OrderCreationForm({ isOpen, onClose, routeConfigs, currentUser, 
     // Filter active routes by customer
     const isValidRoute = (rc: RouteConfig) => {
         if (!rc || rc.status !== 'ACTIVE') return false;
-        if (rc.customer !== formData.customerName) return false;
+        if (rc.customers && rc.customers.length > 0 && !rc.customers.includes(formData.customerName || '')) return false;
         return true;
     };
 

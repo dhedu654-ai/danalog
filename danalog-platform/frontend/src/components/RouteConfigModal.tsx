@@ -125,8 +125,8 @@ export function RouteConfigModal({ config, isOpen, onClose, onSave, onRefresh, i
 
         // VALIDATION
         // 1. General Info
-        if (!formData.customer || !formData.routeName || !formData.cargoType) {
-            alert('Vui lòng điền đầy đủ: Khách hàng, Tên tuyến đường và Loại hàng/Dịch vụ');
+        if (!formData.routeName || !formData.cargoType) {
+            alert('Vui lòng điền đầy đủ: Tên tuyến đường và Loại hàng/Dịch vụ');
             return;
         }
 
@@ -165,7 +165,7 @@ export function RouteConfigModal({ config, isOpen, onClose, onSave, onRefresh, i
                 const newPendingChange = {
                     effectiveDate: pendingEffectiveDate,
                     routeName: formData.routeName,
-                    customer: formData.customer,
+                    customers: formData.customers,
                     km: formData.km,
                     zone: formData.zone,
                     pointA: formData.pointA,
@@ -370,18 +370,18 @@ export function RouteConfigModal({ config, isOpen, onClose, onSave, onRefresh, i
                                             <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Khách hàng (Có thể chọn nhiều)</label>
                                             <div className="relative group">
                                                 <div className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-blue-500 font-medium text-slate-700 min-h-[46px] flex flex-wrap gap-1 items-center cursor-pointer">
-                                                    {(formData.customer ? formData.customer.split(',').map(s => s.trim()).filter(Boolean) : []).length === 0 ? (
-                                                        <span className="text-slate-400">Chọn khách hàng...</span>
+                                                    {(!formData.customers || formData.customers.length === 0) ? (
+                                                        <span className="text-slate-400">Tất cả khách hàng (để trống)</span>
                                                     ) : (
-                                                        (formData.customer ? formData.customer.split(',').map(s => s.trim()).filter(Boolean) : []).map((c, i) => (
+                                                        (formData.customers || []).map((c, i) => (
                                                             <span key={i} className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-sm flex items-center gap-1">
                                                                 {c}
                                                                 <button 
                                                                     type="button" 
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
-                                                                        const current = formData.customer ? formData.customer.split(',').map(s => s.trim()).filter(Boolean) : [];
-                                                                        handleChange('customer', current.filter(x => x !== c).join(', '));
+                                                                        const current = formData.customers || [];
+                                                                        handleChange('customers', current.filter(x => x !== c));
                                                                     }}
                                                                     className="hover:text-blue-900"
                                                                 >
@@ -394,7 +394,7 @@ export function RouteConfigModal({ config, isOpen, onClose, onSave, onRefresh, i
                                                 {/* Dropdown menu */}
                                                 <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto hidden group-hover:block hover:block p-2">
                                                     {customers.map(c => {
-                                                        const current = formData.customer ? formData.customer.split(',').map(s => s.trim()).filter(Boolean) : [];
+                                                        const current = formData.customers || [];
                                                         const isSelected = current.includes(c.name);
                                                         return (
                                                             <label key={c.id} className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded cursor-pointer">
@@ -403,9 +403,9 @@ export function RouteConfigModal({ config, isOpen, onClose, onSave, onRefresh, i
                                                                     checked={isSelected}
                                                                     onChange={(e) => {
                                                                         if (e.target.checked) {
-                                                                            handleChange('customer', [...current, c.name].join(', '));
+                                                                            handleChange('customers', [...current, c.name]);
                                                                         } else {
-                                                                            handleChange('customer', current.filter(x => x !== c.name).join(', '));
+                                                                            handleChange('customers', current.filter(x => x !== c.name));
                                                                         }
                                                                     }}
                                                                     className="rounded text-blue-600 focus:ring-blue-500"

@@ -71,7 +71,7 @@ export const CreateTicketMobile: React.FC<CreateTicketMobileProps> = ({
         }
     };
 
-    const initialRouteId = ticketToEdit?.routeId || routeConfigs.find(r => r.routeName === ticketToEdit?.route && r.customer === ticketToEdit?.customerCode)?.id || '';
+    const initialRouteId = ticketToEdit?.routeId || routeConfigs.find(r => r.routeName === ticketToEdit?.route && (!r.customers?.length || r.customers.includes(ticketToEdit?.customerCode || '')))?.id || '';
 
     // Form State - use user's default plate if creating new ticket
     const [formData, setFormData] = useState({
@@ -104,11 +104,11 @@ export const CreateTicketMobile: React.FC<CreateTicketMobileProps> = ({
     const [availableRoutes, setAvailableRoutes] = useState<RouteConfig[]>([]);
 
     // Filter routes by selected customer
-    const customers = Array.from(new Set(routeConfigs.map(c => c.customer))).filter(c => !!c);
+    const customers = Array.from(new Set(routeConfigs.flatMap(c => c.customers || []))).filter(c => !!c).sort();
 
     useEffect(() => {
         if (formData.customerCode) {
-            const customerRoutes = routeConfigs.filter(r => r.customer === formData.customerCode);
+            const customerRoutes = routeConfigs.filter(r => !r.customers?.length || r.customers.includes(formData.customerCode));
             // Filter by effective date
             const validRoutes = customerRoutes.filter(r => {
                 if (!r.effectiveDate) return true;
