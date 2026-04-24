@@ -4,7 +4,7 @@ import { X, Camera, Save, ArrowLeft, ChevronDown } from 'lucide-react';
 import { format, differenceInCalendarDays, isValid } from 'date-fns';
 
 import { RouteConfig } from '../types';
-import { CUSTOMERS } from '../constants';
+import { api } from '../services/api';
 
 interface TicketModalProps {
     ticket: TransportTicket | null;
@@ -19,8 +19,17 @@ interface TicketModalProps {
 export function TicketModal({ ticket, isOpen, onClose, onSave, routeConfigs = [], isReadOnly, currentUser }: TicketModalProps) {
     const safeRouteConfigs = Array.isArray(routeConfigs) ? routeConfigs : [];
     const [formData, setFormData] = useState<Partial<TransportTicket>>({});
+    const [dbCustomers, setDbCustomers] = useState<any[]>([]);
 
     const isDispatcher = currentUser?.role === 'DISPATCHER' || currentUser?.role === 'DV_LEAD';
+
+    useEffect(() => {
+        if (isOpen) {
+            api.getCustomers().then(data => {
+                if (data) setDbCustomers(data.filter((c: any) => c.status === 'ACTIVE'));
+            }).catch(console.error);
+        }
+    }, [isOpen]);
 
     useEffect(() => {
         if (ticket) {
@@ -365,8 +374,8 @@ export function TicketModal({ ticket, isOpen, onClose, onSave, routeConfigs = []
                                         onChange={e => handleCustomerChange(e.target.value)}
                                     >
                                         <option value="">Chọn khách hàng...</option>
-                                        {CUSTOMERS.map(c => (
-                                            <option key={c} value={c}>{c}</option>
+                                        {dbCustomers.map(c => (
+                                            <option key={c.id} value={c.name}>{c.name}</option>
                                         ))}
                                     </select>
                                 </div>

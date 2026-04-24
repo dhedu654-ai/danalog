@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, ArrowLeft, FileText, Truck } from 'lucide-react';
 import { RouteConfig } from '../types';
-import { CUSTOMERS } from '../constants';
 import { api } from '../services/api';
 
 interface OrderCreationFormProps {
@@ -30,10 +29,14 @@ export function OrderCreationForm({ isOpen, onClose, routeConfigs, currentUser, 
     });
 
     const [isSaving, setIsSaving] = useState(false);
+    const [dbCustomers, setDbCustomers] = useState<any[]>([]);
 
     // Reset form when reopened
     useEffect(() => {
         if (isOpen) {
+            api.getCustomers().then(data => {
+                if (data) setDbCustomers(data.filter((c: any) => c.status === 'ACTIVE'));
+            }).catch(console.error);
             setFormData({
                 customerName: '',
                 routeId: '',
@@ -151,8 +154,8 @@ export function OrderCreationForm({ isOpen, onClose, routeConfigs, currentUser, 
                                         required
                                     >
                                         <option value="">Chọn khách hàng...</option>
-                                        {CUSTOMERS.map(c => (
-                                            <option key={c} value={c}>{c}</option>
+                                        {dbCustomers.map(c => (
+                                            <option key={c.id} value={c.name}>{c.name}</option>
                                         ))}
                                     </select>
                                 </div>
