@@ -166,9 +166,26 @@ export const api = {
         const { data, error } = await supabase.from('RouteConfigs').select('*');
         if(error) throw new Error(error.message);
         
+        const mappedData = data.map(config => {
+            let parsedCustomers: string[] = [];
+            if (config.customer) {
+                if (config.customer.startsWith('[')) {
+                    try { parsedCustomers = JSON.parse(config.customer); } catch(e) {}
+                } else if (config.customer === 'TẤT CẢ' || config.customer === 'ALL') {
+                    parsedCustomers = [];
+                } else {
+                    parsedCustomers = [config.customer];
+                }
+            }
+            return {
+                ...config,
+                customers: parsedCustomers
+            };
+        });
+
         // Deduplicate RouteConfigs by customer + routeName + cargoType
         const unique = new Map();
-        (data || []).forEach(config => {
+        (mappedData || []).forEach(config => {
             const key = `${config.customer}-${config.routeName}-${config.cargoType || ''}`;
             const existing = unique.get(key);
             if (!existing) {
@@ -188,14 +205,60 @@ export const api = {
         return Array.from(unique.values());
     },
     saveRouteConfigs: async (configs: any[]) => {
-        const { data, error } = await supabase.from('RouteConfigs').upsert(configs).select();
+        const dbConfigs = configs.map(c => {
+            const copy = { ...c };
+            if (copy.customers !== undefined) {
+                copy.customer = JSON.stringify(copy.customers);
+                delete copy.customers;
+            }
+            return copy;
+        });
+        const { data, error } = await supabase.from('RouteConfigs').upsert(dbConfigs).select();
         if(error) throw new Error(error.message);
-        return data;
+        
+        return data.map(config => {
+            let parsedCustomers: string[] = [];
+            if (config.customer) {
+                if (config.customer.startsWith('[')) {
+                    try { parsedCustomers = JSON.parse(config.customer); } catch(e) {}
+                } else if (config.customer === 'TẤT CẢ' || config.customer === 'ALL') {
+                    parsedCustomers = [];
+                } else {
+                    parsedCustomers = [config.customer];
+                }
+            }
+            return {
+                ...config,
+                customers: parsedCustomers
+            };
+        });
     },
     updateRouteConfig: async (id: string, updates: any) => {
-         const { data, error } = await supabase.from('RouteConfigs').update(updates).eq('id', id).select();
+         const payload = { ...updates };
+         if (payload.customers !== undefined) {
+             payload.customer = JSON.stringify(payload.customers);
+             delete payload.customers;
+         }
+         const { data, error } = await supabase.from('RouteConfigs').update(payload).eq('id', id).select();
          if(error) throw new Error(error.message);
-         return data?.[0];
+         
+         const config = data?.[0];
+         if (!config) return null;
+         
+         let parsedCustomers: string[] = [];
+         if (config.customer) {
+             if (config.customer.startsWith('[')) {
+                 try { parsedCustomers = JSON.parse(config.customer); } catch(e) {}
+             } else if (config.customer === 'TẤT CẢ' || config.customer === 'ALL') {
+                 parsedCustomers = [];
+             } else {
+                 parsedCustomers = [config.customer];
+             }
+         }
+         return {
+             ...config,
+             customers: parsedCustomers
+         };
     },
     deleteRouteConfig: async (id: string) => {
         const { error } = await supabase.from('RouteConfigs').delete().eq('id', id);
